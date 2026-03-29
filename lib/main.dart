@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'core/theme/app_theme.dart'; // Importing your design system
+import 'features/auth/splash_screen.dart'; 
 void main() {
-  // This is the starting point of your entire application.
   runApp(const SmartStudyApp());
 }
 
@@ -12,19 +12,13 @@ class SmartStudyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SmartStudy',
-      debugShowCheckedModeBanner: false, // Removes the red "DEBUG" banner
-      theme: ThemeData(
-        // We will customize these colors later when we have our Figma design
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      // Scaffold is the blank white canvas for a screen
+      debugShowCheckedModeBanner: false,
+      // Here is where we inject your custom design system!
+      theme: AppTheme.lightTheme, 
+      // We will replace this placeholder with your actual Splash Screen in the next step
       home: const Scaffold(
         body: Center(
-          child: Text(
-            'SmartStudy: Ready for Development',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          child: Text('Theme Connected!'),
         ),
       ),
     );
