@@ -6,31 +6,46 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Dark background from your design
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Using a simple text widget for the logo right now
-            const Text(
-              '✦ SmartStudy',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
+      backgroundColor: Colors.black, 
+      body: Column(
+        children: [
+          const Spacer(), // Pushes the center content down
+          
+          // Center Content (Logo Placeholder & Text)
+          Center(
+            child: Column(
+              children: [
+                const Text(
+                  '✦ SmartStudy',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'STRUCTURED SERENITY',
+                  style: TextStyle(
+                    color: Colors.grey, 
+                    fontSize: 12,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'STRUCTURED SERENITY',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-                letterSpacing: 2.0,
-              ),
+          ),
+          
+          const Spacer(), // Pushes the loading indicator to the bottom
+          
+          // Bottom Loading Indicator
+          const Padding(
+            padding: EdgeInsets.only(bottom: 48.0),
+            child: CircularProgressIndicator(
+              color: Colors.white, // Minimalist white spinner
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
