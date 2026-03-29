@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'registration_screen.dart';
+import '../dashboard/home_dashboard_screen.dart';
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
@@ -90,7 +91,15 @@ class LoginScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Simulates a successful login and routes to the dashboard
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeDashboardScreen(),
+                            ),
+                          );
+                        },
                         child: const Text('Login to Dashboard  →'),
                       ),
                     ),
