@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'registration_screen.dart';
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
@@ -139,12 +139,20 @@ class LoginScreen extends StatelessWidget {
                 children: [
                   const Text('Don\'t have an account? ', style: TextStyle(color: Colors.grey)),
                   GestureDetector(
-                    onTap: () {},
-                    child: const Text(
-                      'Sign up for free',
-                      style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
-                    ),
-                  ),
+                 onTap: () {
+                   // Pushes the Registration screen onto the navigation stack
+                   Navigator.push(
+                     context,
+                     MaterialPageRoute(
+                       builder: (context) => const RegistrationScreen(),
+                     ),
+                   );
+                 },
+                 child: const Text(
+                   'Sign up for free',
+                   style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                 ),
+               ),
                 ],
               ),
               const SizedBox(height: 24),
