@@ -1,4 +1,4 @@
-# smart_study
+# Smart Study - Study/Schedule Planner 
 
 A new Flutter project.
 
