@@ -1,14 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'registration_screen.dart';
 import '../dashboard/home_dashboard_screen.dart';
-class LoginScreen extends StatelessWidget {
+
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  // Controllers to capture input
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // The function to log in existing users
+  Future<void> _loginUser() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Firebase Sign In method
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // If successful, go to the Dashboard
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeDashboardScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      // Catch errors like wrong password or user not found
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message ?? 'Login failed. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB), // Very light grey background
-      body: SafeArea( // Keeps UI out of the phone's notch/status bar
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
@@ -16,7 +79,6 @@ class LoginScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 20),
               
-              // Top Icon Placeholder (The book icon)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -27,30 +89,18 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               
-              // Titles
-              const Text(
-                'SmartStudy',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
+              const Text('SmartStudy', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text(
-                'Elevate your academic workflow',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
+              const Text('Elevate your academic workflow', style: TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 40),
 
-              // The White Form Card
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
                   ],
                 ),
                 child: Column(
@@ -59,13 +109,14 @@ class LoginScreen extends StatelessWidget {
                     // Email Field
                     const Text('EMAIL ADDRESS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 8),
-                    const TextField(
+                    TextField(
+                      controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(hintText: 'name@university.edu'),
+                      decoration: const InputDecoration(hintText: 'name@university.edu'),
                     ),
                     const SizedBox(height: 24),
 
-                    // Password Field with Forgot Link
+                    // Password Field
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -78,9 +129,10 @@ class LoginScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const TextField(
-                      obscureText: true, // Hides the text
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
                         hintText: 'Enter your password',
                         suffixIcon: Icon(Icons.visibility, color: Colors.grey),
                       ),
@@ -90,17 +142,12 @@ class LoginScreen extends StatelessWidget {
                     // Main Login Button
                     SizedBox(
                       width: double.infinity,
+                      height: 48,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Simulates a successful login and routes to the dashboard
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HomeDashboardScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text('Login to Dashboard  →'),
+                        onPressed: _isLoading ? null : _loginUser,
+                        child: _isLoading 
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Login to Dashboard  →'),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -121,6 +168,7 @@ class LoginScreen extends StatelessWidget {
                     // Google Button Placeholder
                     SizedBox(
                       width: double.infinity,
+                      height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF3F4F6),
@@ -130,7 +178,7 @@ class LoginScreen extends StatelessWidget {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.g_mobiledata, size: 28), // Placeholder for Google G logo
+                            Icon(Icons.g_mobiledata, size: 28),
                             SizedBox(width: 8),
                             Text('Google Account', style: TextStyle(fontWeight: FontWeight.w600)),
                           ],
@@ -142,31 +190,25 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // Bottom Sign Up Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text('Don\'t have an account? ', style: TextStyle(color: Colors.grey)),
                   GestureDetector(
-                 onTap: () {
-                   // Pushes the Registration screen onto the navigation stack
-                   Navigator.push(
-                     context,
-                     MaterialPageRoute(
-                       builder: (context) => const RegistrationScreen(),
-                     ),
-                   );
-                 },
-                 child: const Text(
-                   'Sign up for free',
-                   style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
-                 ),
-               ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RegistrationScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text('Sign up for free', style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
               
-              // Footer security note
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

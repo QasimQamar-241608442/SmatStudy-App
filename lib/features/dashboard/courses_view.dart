@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
-
 class CoursesView extends StatelessWidget {
-  const CoursesView({super.key});
+  // 1. Declare the variables this screen expects to receive
+  final String semesterId;
+  final String semesterName;
 
-  // This is dummy data. Later, this will come directly from Firebase!
+  // 2. Require them in the constructor
+  const CoursesView({
+    super.key,
+    required this.semesterId,
+    required this.semesterName,
+  });
+
+  // (Keep your _dummyCourses list here exactly as it is)
   final List<Map<String, String>> _dummyCourses = const [
     {
       'code': 'ECON402',
@@ -13,34 +21,17 @@ class CoursesView extends StatelessWidget {
       'time': 'Mon/Wed/Fri  11:30 - 13:00',
       'alert': 'NEXT CLASS: TODAY'
     },
-    {
-      'code': 'PHYS301',
-      'title': 'Quantum Mechanics I',
-      'professor': 'Dr. Elena Vance',
-      'location': 'Lab 12 • Section A',
-      'time': 'Tue/Thu  09:00 - 10:30',
-      'alert': ''
-    },
-    {
-      'code': 'ART210',
-      'title': 'Modern European Art',
-      'professor': 'Prof. Julian S.',
-      'location': 'Gallery 3 • Section C',
-      'time': 'Friday  14:00 - 17:00',
-      'alert': 'NEXT: FRIDAY'
-    },
+    // ... keep the rest of your dummy courses ...
   ];
 
-@override
+  @override
   Widget build(BuildContext context) {
-    // We upgraded this from a standard Column to a full Scaffold
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      // Adding the Global Top Bar based on your navigation rules
       appBar: AppBar(
         backgroundColor: const Color(0xFFF9FAFB),
-        elevation: 0, // Removes the drop shadow for a flat, modern look
-        iconTheme: const IconThemeData(color: Colors.black), // Makes the back arrow black
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
         title: const Text('SmartStudy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
@@ -51,18 +42,19 @@ class CoursesView extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 16, 24, 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 3. Inject the dynamic semester name here!
                 Text(
-                  'Fall 2026',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  semesterName,
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Academic Year 2026/27 • Semester 1',
+                const SizedBox(height: 4),
+                const Text(
+                  'Academic Year 2026', // We can make this dynamic later too!
                   style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ],
@@ -95,7 +87,7 @@ class CoursesView extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddEditSemesterScreen extends StatefulWidget {
   const AddEditSemesterScreen({super.key});
@@ -8,6 +10,102 @@ class AddEditSemesterScreen extends StatefulWidget {
 }
 
 class _AddEditSemesterScreenState extends State<AddEditSemesterScreen> {
+  // Controller for the semester name
+  final TextEditingController _nameController = TextEditingController();
+  
+  // Variables to store our selected dates
+  DateTime? _startDate;
+  DateTime? _endDate;
+  
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  // 1. Function to trigger the native calendar popup
+  Future<void> _pickDate(bool isStart) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Colors.black, // Makes the calendar black/white to match our theme
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        if (isStart) {
+          _startDate = pickedDate;
+        } else {
+          _endDate = pickedDate;
+        }
+      });
+    }
+  }
+
+  // 2. Function to save data to Firestore
+  Future<void> _saveSemester() async {
+    // Validation: Ensure nothing is empty
+    if (_nameController.text.isEmpty || _startDate == null || _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a name and select both dates.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Get the currently logged-in user's ID
+      final String uid = FirebaseAuth.instance.currentUser!.uid;
+
+      // Save to Firestore under users -> [user_id] -> semesters
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('semesters')
+          .add({
+        'name': _nameController.text.trim(),
+        'startDate': Timestamp.fromDate(_startDate!),
+        'endDate': Timestamp.fromDate(_endDate!),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Close the screen after saving
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,65 +123,52 @@ class _AddEditSemesterScreenState extends State<AddEditSemesterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Header Section
-              const Text(
-                'Semester Details',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
+              const Text('Semester Details', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text(
-                'Organize your academic journey by defining your semester timeframe.',
-                style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.4),
-              ),
+              const Text('Organize your academic journey by defining your semester timeframe.', style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.4)),
               const SizedBox(height: 32),
 
-              // 2. Semester Name Input
               const Text('SEMESTER NAME', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 8),
-              const TextField(
-                decoration: InputDecoration(
-                  hintText: 'e.g. Fall 2024',
-                ),
+              TextField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(hintText: 'e.g. Fall 2026'),
               ),
               const SizedBox(height: 24),
 
-              // 3. Date Pickers (Using custom containers to match Figma precisely)
               const Text('START DATE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 8),
-              _buildDatePickerField('mm/dd/yyyy'),
+              _buildDatePickerField(
+                isStart: true,
+                date: _startDate,
+              ),
               
               const SizedBox(height: 24),
 
               const Text('END DATE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 8),
-              _buildDatePickerField('mm/dd/yyyy'),
+              _buildDatePickerField(
+                isStart: false,
+                date: _endDate,
+              ),
               
               const SizedBox(height: 32),
 
-              // 4. AI Timeline Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.grey[200], // Slightly darker grey for contrast
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(16)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Academic Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     const SizedBox(height: 8),
-                    Text(
-                      'Visualizing your upcoming commitment period.',
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14),
-                    ),
+                    Text('Visualizing your upcoming commitment period.', style: TextStyle(color: Colors.grey[700], fontSize: 14)),
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -98,27 +183,23 @@ class _AddEditSemesterScreenState extends State<AddEditSemesterScreen> {
               ),
               const SizedBox(height: 48),
 
-              // 5. Action Buttons
               SizedBox(
                 width: double.infinity,
+                height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // For now, just pop back to the previous screen
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Save Semester'),
+                  onPressed: _isLoading ? null : _saveSemester,
+                  child: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Save Semester'),
                 ),
               ),
               const SizedBox(height: 16),
+              
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.grey[700],
-                  ),
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
                   child: const Text('Cancel Changes'),
                 ),
               ),
@@ -129,19 +210,22 @@ class _AddEditSemesterScreenState extends State<AddEditSemesterScreen> {
     );
   }
 
-  // Helper Widget: Simulates a Date Picker Input
-  Widget _buildDatePickerField(String hintText) {
-    return InkWell(
-      onTap: () {
-        // Later, we will trigger Flutter's native showDatePicker() here
-      },
+  // Helper Widget for the Date Pickers
+  Widget _buildDatePickerField({required bool isStart, required DateTime? date}) {
+    // Simple formatting so we don't have to install another package right now
+    final String displayText = date == null 
+        ? 'mm/dd/yyyy' 
+        : '${date.month}/${date.day}/${date.year}';
+
+    return GestureDetector(
+      onTap: () => _pickDate(isStart),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
+             BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2)),
           ],
         ),
         child: Row(
@@ -150,8 +234,8 @@ class _AddEditSemesterScreenState extends State<AddEditSemesterScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                hintText,
-                style: const TextStyle(color: Colors.black, fontSize: 16),
+                displayText,
+                style: TextStyle(color: date == null ? Colors.grey : Colors.black, fontSize: 16),
               ),
             ),
             const Icon(Icons.calendar_month, color: Colors.black, size: 20),

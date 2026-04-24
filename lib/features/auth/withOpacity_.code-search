@@ -1,0 +1,50 @@
+# Query: withOpacity(
+# ContextLines: 1
+
+10 results - 6 files
+
+lib\features\auth\login_screen.dart:
+  49                      BoxShadow(
+  50:                       color: Colors.black.withValues(alpha:0.05),
+  51                        blurRadius: 10,
+
+lib\features\auth\registration_screen.dart:
+  49                      BoxShadow(
+  50:                       color: Colors.black.withValues(alpha:0.05),
+  51                        blurRadius: 10,
+
+lib\features\courses\add_edit_semester_screen.dart:
+  143            boxShadow: [
+  144:              BoxShadow(color: Colors.black.withValues(alpha:0.02), blurRadius: 4, offset: const Offset(0, 2)),
+  145            ],
+
+lib\features\dashboard\courses_view.dart:
+  97            BoxShadow(
+  98:             color: Colors.black.withValues(alpha:0.05),
+  99              blurRadius: 10,
+
+lib\features\dashboard\home_view.dart:
+   47                  BoxShadow(
+   48:                   color: Colors.black.withValues(alpha:0.05),
+   49                    blurRadius: 10,
+
+   85                  BoxShadow(
+   86:                   color: Colors.black.withValues(alpha:0.05),
+   87                    blurRadius: 10,
+
+  182                  BoxShadow(
+  183:                   color: Colors.black.withValues(alpha:0.05),
+  184                    blurRadius: 10,
+
+  294            BoxShadow(
+  295:             color: Colors.black.withValues(alpha:0.05),
+  296              blurRadius: 10,
+
+lib\features\dashboard\semesters_view.dart:
+   29                  BoxShadow(
+   30:                   color: Colors.black.withValues(alpha:0.05),
+   31                    blurRadius: 10,
+
+  167          boxShadow: [
+  168:           BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 10, offset: const Offset(0, 4)),
+  169          ],

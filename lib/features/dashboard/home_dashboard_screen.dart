@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_view.dart'; // This will be your actual Home Dashboard content once we build it out 
 import 'semesters_view.dart'; // This will be your actual Semesters View content once we build it out
+import 'package:firebase_auth/firebase_auth.dart'; // We will use this to implement the logout functionality in the Profile View later
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
 
@@ -13,14 +14,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   int _selectedIndex = 0;
 
   // These are temporary placeholders for the 5 main sections of your app
-  static const List<Widget> _widgetOptions = <Widget>[
-    HomeView(), // This will be your actual Home Dashboard content
-    SemestersView(), // This will be your actual Semesters View content
-    Center(child: Text('Planner View Will Go Here', style: TextStyle(fontSize: 20))),
-    Center(child: Text('AI Assistant Will Go Here', style: TextStyle(fontSize: 20))),
-    Center(child: Text('Profile View Will Go Here', style: TextStyle(fontSize: 20))),
+static final List<Widget> _widgetOptions = <Widget>[
+    const HomeView(), 
+    const SemestersView(), 
+    const Center(child: Text('Planner View Will Go Here', style: TextStyle(fontSize: 20))),
+    const Center(child: Text('AI Assistant Will Go Here', style: TextStyle(fontSize: 20))),
+    // Temporary Profile Tab to test logging out
+    Center(
+      child: ElevatedButton(
+        onPressed: () {
+          FirebaseAuth.instance.signOut();
+        },
+        child: const Text('Log Out'),
+      ),
+    ),
   ];
-
   // This function runs every time a user taps a bottom navigation icon
   void _onItemTapped(int index) {
     setState(() {
