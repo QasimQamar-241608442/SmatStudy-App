@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../dashboard/home_dashboard_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -10,63 +10,44 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
-  // Controllers to capture the text the user types
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
-  bool _isLoading = false; // Controls our loading spinner
+  final TextEditingController _confirmController = TextEditingController();
+  bool _isLoading = false;
 
-  // Always dispose of controllers to prevent memory leaks
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  // The function that talks to Firebase
-  Future<void> _registerUser() async {
-    // 1. Basic validation
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields.')),
-      );
+  Future<void> _register() async {
+    if (_passwordController.text != _confirmController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match!')));
       return;
     }
 
-    setState(() {
-      _isLoading = true; // Start the spinner
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // 2. Send the request to Google Firebase
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // 1. Create the user in Firebase Auth
+      UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // 3. If successful, navigate to the Dashboard!
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeDashboardScreen()),
-        );
+      // 2. Save their Full Name into Firestore so we can use it on the Profile Screen later!
+      if (cred.user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+          'fullName': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        
+        // AuthWrapper will auto-redirect, we just need to pop this screen off the stack
+        if (mounted) Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
-      // 4. Catch any errors (like "email already in use" or "weak password")
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'An error occurred. Please try again.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Registration failed')));
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false; // Stop the spinner whether it succeeded or failed
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -74,100 +55,84 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.black)),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 10),
-              
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.menu_book, color: Colors.white, size: 32),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.menu_book, color: Colors.white, size: 28),
               ),
-              const SizedBox(height: 24),
-              
+              const SizedBox(height: 16),
               const Text('SmartStudy', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('Elevate your academic journey.', style: TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 32),
 
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Create Account', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('Join the community of structured learners.', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                     const SizedBox(height: 24),
 
-                    // Full Name Field
                     const Text('FULL NAME', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(hintText: 'Alex Rivera'),
+                      decoration: InputDecoration(hintText: 'Alex Rivera', filled: true, fillColor: Colors.grey[100], border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                     ),
                     const SizedBox(height: 16),
 
-                    // Email Field
                     const Text('EMAIL ADDRESS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(hintText: 'alex@university.edu'),
+                      decoration: InputDecoration(hintText: 'alex@university.edu', filled: true, fillColor: Colors.grey[100], border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                     ),
                     const SizedBox(height: 16),
 
-                    // Password Field
                     const Text('PASSWORD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
-                      decoration: const InputDecoration(hintText: '••••••••'),
+                      decoration: InputDecoration(hintText: '••••••••', filled: true, fillColor: Colors.grey[100], border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text('CONFIRM PASSWORD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _confirmController,
+                      obscureText: true,
+                      decoration: InputDecoration(hintText: '••••••••', filled: true, fillColor: Colors.grey[100], border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                     ),
                     const SizedBox(height: 32),
 
-                    // Create Account Button (Now with Loading Spinner!)
                     SizedBox(
                       width: double.infinity,
-                      height: 48, // Fixed height prevents the button from shrinking when the spinner shows
+                      height: 54,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _registerUser, // Disables button while loading
+                        onPressed: _isLoading ? null : _register,
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                         child: _isLoading 
                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Create Account'),
+                          : const Text('Create Account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Already have an account? ', style: TextStyle(color: Colors.grey)),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context), 
-                    child: const Text('Back to Login', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 40),
             ],
           ),
         ),

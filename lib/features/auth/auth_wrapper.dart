@@ -1,33 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart';
-import '../dashboard/home_dashboard_screen.dart';
+import '../dashboard/main_dashboard.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // StreamBuilder listens to a constant stream of data (in this case, Auth state)
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // 1. While it's checking with Firebase, show a quick loading spinner
+        // If the stream is still loading, show a blank loading screen
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF9FAFB),
-            body: Center(
-              child: CircularProgressIndicator(color: Colors.black),
-            ),
-          );
+          return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.black)));
         }
-
-        // 2. If the snapshot contains user data, they are successfully logged in!
+        
+        // If we have a user data object, they are logged in! Go to Dashboard.
         if (snapshot.hasData) {
-          return const HomeDashboardScreen();
+          return const MainDashboard();
         }
-
-        // 3. If there is no data, they are logged out. Show the Login Screen.
+        
+        // Otherwise, they are logged out. Show the Login Screen.
         return const LoginScreen();
       },
     );

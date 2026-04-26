@@ -1,31 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../courses/add_edit_course_screen.dart';
+import '../courses/course_details_screen.dart';
+
 class CoursesView extends StatelessWidget {
-  // 1. Declare the variables this screen expects to receive
   final String semesterId;
   final String semesterName;
 
-  // 2. Require them in the constructor
   const CoursesView({
     super.key,
     required this.semesterId,
     required this.semesterName,
   });
 
-  // (Keep your _dummyCourses list here exactly as it is)
-  final List<Map<String, String>> _dummyCourses = const [
-    {
-      'code': 'ECON402',
-      'title': 'Advanced Econometrics',
-      'professor': 'Prof. Aris',
-      'location': 'Hall 405 • Section B',
-      'time': 'Mon/Wed/Fri  11:30 - 13:00',
-      'alert': 'NEXT CLASS: TODAY'
-    },
-    // ... keep the rest of your dummy courses ...
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // Grab the currently logged-in user's ID
+    final String uid = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -47,121 +40,222 @@ class CoursesView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 3. Inject the dynamic semester name here!
                 Text(
                   semesterName,
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Academic Year 2026', // We can make this dynamic later too!
+                  'Academic Year', // We can make this dynamic later
                   style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ],
             ),
           ),
           
+          // THE REAL-TIME DATABASE STREAM
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              itemCount: _dummyCourses.length,
-              itemBuilder: (context, index) {
-                final course = _dummyCourses[index];
-                return _buildCourseCard(course);
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .collection('semesters')
+                  .doc(semesterId) // Point exactly to this semester!
+                  .collection('courses')
+                  .orderBy('createdAt', descending: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                // 1. Loading State
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Colors.black));
+                }
+
+                // 2. Empty State
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Text(
+                        'No courses added yet.\nTap the + button to build your schedule!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey, fontSize: 16, height: 1.5),
+                      ),
+                    ),
+                  );
+                }
+
+                // 3. Data State
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    var doc = snapshot.data!.docs[index];
+                    var data = doc.data() as Map<String, dynamic>;
+
+                    // Safely extract text data
+                    String code = data['code'] ?? '';
+                    String title = data['title'] ?? 'Untitled Course';
+                    String professor = data['professor'] ?? 'No Professor Listed';
+                    String location = data['location'] ?? 'No Location Listed';
+                    String section = data['section'] ?? '';
+                    // Parse the Sessions array to make a readable schedule string
+                    List<dynamic> rawSessions = data['sessions'] ?? [];
+                    String scheduleString = 'Time TBD';
+
+                    if (rawSessions.isNotEmpty) {
+                      // Check if all sessions share the exact same start time
+                      bool sameTime = rawSessions.every((s) => s['start'] == rawSessions[0]['start']);
+                      
+                      if (sameTime) {
+                        // If times are identical, group the days: "Mon, Wed, Fri • 9:00 AM"
+                        List<String> days = rawSessions.map((s) => s['day'].toString().substring(0, 3)).toList();
+                        scheduleString = '${days.join(', ')} • ${rawSessions[0]['start']}';
+                      } else {
+                        // If times are different, list them out: "Mon 9:00 AM | Thu 2:00 PM"
+                        List<String> blocks = rawSessions.map((s) => '${s['day'].toString().substring(0, 3)} ${s['start']}').toList();
+                        scheduleString = blocks.join('  |  ');
+                      }
+                    }
+                    // Wrap the card in an InkWell to make it tappable!
+                    return InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CourseDetailsScreen(
+                              semesterId: semesterId, // The parent semester ID
+                              courseId: doc.id,       // The unique Firestore ID for this specific course
+                              courseData: data,       // Passing all the data so it loads instantly
+                            ),
+                          ),
+                        );
+                      },
+                      child: _buildCourseCard(
+                        code: code,
+                        section: section, 
+                        title: title,
+                        professor: professor,
+                        location: location,
+                        time: scheduleString,
+                        alert: '', 
+                      ),
+                    );
+                  },
+                );
               },
             ),
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddEditCourseScreen(
+                semesterId: semesterId,
+              ),
+            ),
+          );
+        },
+        backgroundColor: Colors.black,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
-  // The blueprint for a single course card
-  Widget _buildCourseCard(Map<String, String> course) {
-    final hasAlert = course['alert']!.isNotEmpty;
 
+  // The helper widget that draws the actual card
+// Update the signature to include section// The helper widget that draws the actual card
+  Widget _buildCourseCard({
+    required String code,
+    required String section, 
+    required String title,
+    required String professor,
+    required String location,
+    required String time,
+    required String alert,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      // --- RESTORED STYLING PROPERTIES ---
+      margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
+      // -----------------------------------
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Row: Course Code & Alert
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  course['code']!,
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(6)),
+                    child: Text(code, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+                  if (section.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(6)),
+                        child: Text('Sec $section', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                      ),
+                    ),
+                ],
               ),
-              if (hasAlert)
+              if (alert.isNotEmpty)
                 Row(
                   children: [
-                    Icon(Icons.error, color: Colors.red[700], size: 12),
+                    const Icon(Icons.error, color: Colors.red, size: 14),
                     const SizedBox(width: 4),
-                    Text(
-                      course['alert']!,
-                      style: TextStyle(color: Colors.red[700], fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
+                    Text(alert, style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
-                ),
+                )
             ],
           ),
           const SizedBox(height: 16),
-          
-          // Course Title
-          Text(
-            course['title']!,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text(professor, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.business_outlined, size: 16, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text(location, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.access_time, size: 16, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text(time, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+            ],
           ),
           const SizedBox(height: 16),
-
-          // Details (Professor, Location, Time)
-          _buildDetailRow(Icons.person, course['professor']!),
+          const Divider(),
           const SizedBox(height: 8),
-          _buildDetailRow(Icons.door_front_door, course['location']!),
-          const SizedBox(height: 8),
-          _buildDetailRow(Icons.schedule, course['time']!),
-          
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
-          
-          // Bottom Action Arrow
           const Align(
             alignment: Alignment.centerRight,
-            child: Icon(Icons.arrow_forward, size: 20),
-          ),
+            child: Icon(Icons.arrow_forward, size: 20, color: Colors.black),
+          )
         ],
       ),
-    );
-  }
-
-  // Helper widget for the detail rows (Icon + Text)
-  Widget _buildDetailRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 12),
-        Text(text, style: TextStyle(color: Colors.grey[800], fontSize: 13)),
-      ],
     );
   }
 }
