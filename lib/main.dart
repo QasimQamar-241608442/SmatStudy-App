@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // <--- 1. Add this import!
-import 'features/auth/auth_wrapper.dart'; 
+import 'package:smart_study/features/splash/splash_screen.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +24,7 @@ class SmartStudyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF9FAFB),
         fontFamily: 'Roboto', 
       ),
-      home: const AuthWrapper(), 
+      home: const SplashScreen(), 
     );
   }
 }
