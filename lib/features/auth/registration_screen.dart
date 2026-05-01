@@ -44,6 +44,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         } else if (e.code == 'weak-password') {
           errorMessage = 'The password provided is too weak.';
         }
+        // --- ADD THIS LINE ---
+        if (!mounted) return; 
+        // ---------------------
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+          ),
+        ); 
+        
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

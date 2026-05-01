@@ -17,7 +17,7 @@ class _AiScreenState extends State<AiScreen> {
   bool _isLoading = false;
 
   // WARNING: Paste your actual API key here!
-  final String _apiKey = 'AIzaSyAzj1WSbWc3qq5rfl7smjubDh1v8ve-g2w'; 
+  final String _apiKey = 'AIzaSyBzAsSUzsfoh7eYg1BHOD8KIhpvH78Jvbk'; 
 
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();

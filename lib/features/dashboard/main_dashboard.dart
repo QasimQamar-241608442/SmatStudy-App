@@ -4,7 +4,7 @@ import '../dashboard/semesters_view.dart';
 import '../planner/planner_screen.dart';
 import '../ai/ai_screen.dart';
 import '../profile/profile_screen.dart';
-
+import '../grades/grades_screen.dart';
 class MainDashboard extends StatefulWidget {
   const MainDashboard({super.key});
 
@@ -19,8 +19,10 @@ class _MainDashboardState extends State<MainDashboard> {
     const HomeScreen(),
     const SemestersView(),
     const PlannerScreen(),
+    const GradesScreen(),
     const AiScreen(),
     const ProfileScreen(),
+
   ];
 
   @override
@@ -61,6 +63,10 @@ class _MainDashboardState extends State<MainDashboard> {
             BottomNavigationBarItem(
               icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.calendar_today)),
               label: 'PLANNER',
+            ),
+              BottomNavigationBarItem(
+                icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.grade)),
+                label: 'GRADES',
             ),
             BottomNavigationBarItem(
               icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.auto_awesome)),

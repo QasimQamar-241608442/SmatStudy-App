@@ -24,13 +24,22 @@ class CoursesView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text('SmartStudy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: Colors.black)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none, color: Colors.black)),
-        ],
+        // The leading icon handles the "Back" functionality
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'SmartStudy',
+          style: TextStyle(
+            color: Colors.black, 
+            fontWeight: FontWeight.bold, 
+            fontSize: 18,
+          ),
+        ),
+        // The actions property (search and notification icons) has been removed 
+        // to create a cleaner, focused UI for adding courses.
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

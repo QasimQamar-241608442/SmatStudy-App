@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import '../search/global_search_screen.dart';
+import '../notifications/notifications_screen.dart';
 class AddEditCourseScreen extends StatefulWidget {
   final String semesterId; 
 
@@ -296,10 +297,28 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text('Add New Course', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('SmartStudy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const GlobalSearchScreen())
       ),
+    ),
+          IconButton(
+            icon: const Badge(
+              backgroundColor: Colors.red,
+              child: Icon(Icons.notifications_none, color: Colors.black),
+      ),
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const NotificationsScreen())
+      ),
+    ),
+  ],
+),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),

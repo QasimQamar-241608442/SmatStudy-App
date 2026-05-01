@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'add_edit_task_screen.dart';
+import 'course_ai_screen.dart'; // <-- ADDED: Import for your new AI Screen
 
 class CourseDetailsScreen extends StatelessWidget {
   final String semesterId;
@@ -73,6 +74,7 @@ class CourseDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // This line is to get the user ID!
     final String uid = FirebaseAuth.instance.currentUser!.uid;
+    
     // 1. Safely extract all our awesome new database fields!
     final String code = courseData['code'] ?? '';
     final String title = courseData['title'] ?? 'Untitled Course';
@@ -132,7 +134,7 @@ class CourseDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 2. The Hero Header (Matching your Stitch design)
+            // 2. The Hero Header
             Text(title, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, height: 1.1)),
             const SizedBox(height: 8),
             Text(subtitle, style: TextStyle(fontSize: 15, color: Colors.grey[700], fontWeight: FontWeight.w500)),
@@ -159,6 +161,36 @@ class CourseDetailsScreen extends StatelessWidget {
                 ),
               ],
             ),
+            
+            const SizedBox(height: 12),
+
+            // --- ADDED: THE NEW AI TUTOR BUTTON ---
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CourseAiScreen(
+                        courseId: courseId,
+                        courseName: title, // Passes the actual course title to the AI!
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6B4EFF), // A beautiful purple to make it stand out
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                label: Text('Open $code AI Tutor', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+            // --------------------------------------
+
             const SizedBox(height: 40),
 
             // 3. Schedule & Venue (Dynamically rendering our array!)
@@ -242,7 +274,7 @@ class CourseDetailsScreen extends StatelessWidget {
             
             const SizedBox(height: 40),
 
-            // 5. Upcoming Tasks Placeholder (Ready for Phase 4)
+            // 5. Upcoming Tasks 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -262,10 +294,11 @@ class CourseDetailsScreen extends StatelessWidget {
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0), tapTargetSize: MaterialTapTargetSize.shrinkWrap), 
                   child: const Text('+ Add', style: TextStyle(fontWeight: FontWeight.bold))
                 )
-              ],// childern
+              ],
             ),
             const SizedBox(height: 16),
-// THE REAL-TIME TASKS STREAM
+
+            // THE REAL-TIME TASKS STREAM
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
@@ -405,6 +438,7 @@ class CourseDetailsScreen extends StatelessWidget {
       ),
     );
   }
+
   // Helper widget to draw individual Task Cards
   Widget _buildTaskCard({
     required String title,

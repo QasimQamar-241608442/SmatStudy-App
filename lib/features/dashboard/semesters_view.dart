@@ -1,229 +1,247 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'courses_view.dart';
-import '../courses/add_edit_semester_screen.dart';
 
-class SemestersView extends StatelessWidget {
+// Ensure these paths match your project structure
+import '../search/global_search_screen.dart';
+import '../notifications/notifications_screen.dart';
+import '../courses/add_edit_semester_screen.dart';
+import 'courses_view.dart'; 
+
+class SemestersView extends StatefulWidget {
   const SemestersView({super.key});
 
   @override
+  State<SemestersView> createState() => _SemestersViewState();
+}
+
+class _SemestersViewState extends State<SemestersView> {
+  final String uid = FirebaseAuth.instance.currentUser!.uid;
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Priority Action Card
-          const Text('Priority Action', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black, width: 2), 
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+    const Color bgColor = Color(0xFFF9FAFB);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: bgColor,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'SmartStudy',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const GlobalSearchScreen())
             ),
-            child: Row(
+          ),
+          IconButton(
+            icon: const Badge(
+              backgroundColor: Colors.red,
+              child: Icon(Icons.notifications_none, color: Colors.black),
+            ),
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const NotificationsScreen())
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- ACADEMIC JOURNEY HEADER ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
-                  child: Icon(Icons.calendar_today, color: Colors.red[400]),
+                const Text(
+                  'Academic Journey',
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('View Deadlines', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 4),
-                      Text('4 assignments due in the next 72 hours', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Text('Open Schedule', style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold, fontSize: 13)),
-                          const SizedBox(width: 4),
-                          Icon(Icons.chevron_right, color: Colors.red[700], size: 16),
-                        ],
-                      )
-                    ],
-                  ),
-                )
+                Text(
+                  '2026 Academic\nYear',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[400], letterSpacing: 1.0),
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
-          // 2. Academic Journey Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text('Academic\nJourney', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, height: 1.2)),
-              Text('2026 Academic\nYear', textAlign: TextAlign.right, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 24),
+            // --- SEMESTER LIST (Fixed Sorting Logic) ---
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .collection('semesters')
+                  // FIX: Sort by startDate in ascending order (earliest date first)
+                  .orderBy('startDate', descending: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Colors.black));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-          // 3. REAL-TIME DATABASE STREAM
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(FirebaseAuth.instance.currentUser!.uid)
-                .collection('semesters')
-                .orderBy('startDate', descending: false)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: Colors.black));
-              }
-
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: Text('No semesters added yet. Click below to start!', style: TextStyle(color: Colors.grey)),
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    final doc = snapshot.data!.docs[index];
+                    return _buildSemesterCard(doc);
+                  },
                 );
-              }
+              },
+            ),
 
-              return ListView.builder(
-                shrinkWrap: true, 
-                physics: const NeverScrollableScrollPhysics(), 
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  var doc = snapshot.data!.docs[index];
-                  var data = doc.data() as Map<String, dynamic>;
-                  
-                  String name = data['name'] ?? 'Unnamed Semester';
-                  
-                  Timestamp? start = data['startDate'];
-                  Timestamp? end = data['endDate'];
-                  String details = 'Dates not set';
-                  
-                  if (start != null && end != null) {
-                    DateTime startDate = start.toDate();
-                    DateTime endDate = end.toDate();
-                    details = '${startDate.month}/${startDate.day}/${startDate.year}  —  ${endDate.month}/${endDate.day}/${endDate.year}';
-                  }
+            const SizedBox(height: 32),
 
-                  return _buildSemesterCard(
-                    context: context,
-                    status: 'SEMESTER',
-                    title: name,
-                    details: details,
-                    tags: [], 
-                    progress: 0.0,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CoursesView(
-                            semesterId: doc.id, 
-                            semesterName: name, 
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+            // --- REPOSITIONED PRIORITY ACTION ---
+            const Text(
+              'PRIORITY ACTION',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
+            ),
+            const SizedBox(height: 12),
+            _buildPriorityActionCard(),
+            
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(
+          context, 
+          MaterialPageRoute(builder: (context) => const AddEditSemesterScreen())
+        ),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildSemesterCard(DocumentSnapshot doc) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.all(20),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('SEMESTER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[400], letterSpacing: 1.0)),
+                const SizedBox(height: 4),
+                Text(doc['name'], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                // Displays the year based on the semester's specific start date
+                '${(doc['startDate'] as Timestamp).toDate().year} — Present',
+                style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
+              ),
+            ),
+            trailing: const Icon(Icons.more_vert, color: Colors.grey),
+          ),
+          const Divider(height: 1, indent: 20, endIndent: 20),
+          
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CoursesView(
+                    semesterId: doc.id,
+                    semesterName: doc['name'],
+                  ),
+                ),
               );
             },
-          ),
-          
-          // 4. Add Semester Button
-          GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const AddEditSemesterScreen()));
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid), 
-              ),
-              child: Column(
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(Icons.add, color: Colors.black),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Add Semester', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 4),
-                  Text('Plan your next academic\nmilestone', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                  const Text('View Courses', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Icon(Icons.arrow_forward, size: 18, color: Colors.grey[800]),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 40),
+          )
         ],
       ),
     );
   }
 
-  // Helper Widget for Semester Cards
-  Widget _buildSemesterCard({
-    required BuildContext context,
-    required String status,
-    required String title,
-    required String details,
-    required List<String> tags,
-    required double progress,
-    required VoidCallback onTap, 
-  }) {
+  Widget _buildPriorityActionCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(status, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.0)),
-              const Icon(Icons.more_vert, color: Colors.grey, size: 20),
-            ],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.calendar_today, color: Colors.red, size: 24),
           ),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(details, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-          const SizedBox(height: 16),
-          
-          if (tags.isNotEmpty)
-            Row(
-              children: tags.map((tag) => Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4)),
-                child: Text(tag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-              )).toList(),
-            ),
-            
-          const SizedBox(height: 24),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
-          
-          InkWell(
-            onTap: onTap, 
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('View Courses', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Icon(Icons.arrow_forward, size: 20),
+                const Text('View Deadlines', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text('4 assignments due in the next 72 hours', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                const SizedBox(height: 8),
+                const Row(
+                  children: [
+                    Text('Open Schedule', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
+                    SizedBox(width: 4),
+                    Icon(Icons.chevron_right, size: 16, color: Colors.red),
+                  ],
+                )
               ],
             ),
-          ),
+          )
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          children: [
+            Icon(Icons.auto_stories_outlined, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            const Text('Start Your Journey', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 8),
+            Text('Add your first semester to begin organizing your academic data.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[500])),
+          ],
+        ),
       ),
     );
   }
