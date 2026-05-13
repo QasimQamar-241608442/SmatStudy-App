@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 // Ensure these paths match your project structure
 import '../search/global_search_screen.dart';
 import '../notifications/notifications_screen.dart';
-import '../courses/add_edit_semester_screen.dart';
+import '../courses/add_edit_semester_screen.dart'; // Adjusted path if needed
 import 'courses_view.dart'; 
 
 class SemestersView extends StatefulWidget {
@@ -17,6 +17,58 @@ class SemestersView extends StatefulWidget {
 
 class _SemestersViewState extends State<SemestersView> {
   final String uid = FirebaseAuth.instance.currentUser!.uid;
+
+  // --- FIX: Updated Context checks for production stability ---
+  Future<void> _deleteSemester(BuildContext context, String semesterId, String semesterName) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white, 
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Delete $semesterName?'),
+          content: const Text('Are you sure you want to delete this semester? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), 
+              style: TextButton.styleFrom(foregroundColor: Colors.grey),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true), 
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('semesters')
+          .doc(semesterId)
+          .delete();
+
+      // NEW: Modern context checking for async gaps
+      if (!context.mounted) return; 
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$semesterName deleted successfully.')),
+      );
+    } catch (e) {
+      // NEW: Modern context checking for async gaps
+      if (!context.mounted) return; 
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting semester: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,13 +126,12 @@ class _SemestersViewState extends State<SemestersView> {
             ),
             const SizedBox(height: 24),
 
-            // --- SEMESTER LIST (Fixed Sorting Logic) ---
+            // --- SEMESTER LIST (Real-time from Firestore) ---
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
                   .doc(uid)
                   .collection('semesters')
-                  // FIX: Sort by startDate in ascending order (earliest date first)
                   .orderBy('startDate', descending: false)
                   .snapshots(),
               builder: (context, snapshot) {
@@ -105,7 +156,7 @@ class _SemestersViewState extends State<SemestersView> {
 
             const SizedBox(height: 32),
 
-            // --- REPOSITIONED PRIORITY ACTION ---
+            // --- PRIORITY ACTION ---
             const Text(
               'PRIORITY ACTION',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
@@ -152,12 +203,32 @@ class _SemestersViewState extends State<SemestersView> {
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text(
-                // Displays the year based on the semester's specific start date
                 '${(doc['startDate'] as Timestamp).toDate().year} — Present',
                 style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
               ),
             ),
-            trailing: const Icon(Icons.more_vert, color: Colors.grey),
+            trailing: PopupMenuButton<String>(
+              color: Colors.white,
+              surfaceTintColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _deleteSemester(context, doc.id, doc['name']);
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text('Delete Semester', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const Divider(height: 1, indent: 20, endIndent: 20),
           
