@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../notifications/notifications_screen.dart';
-import 'account_settings_screen.dart'; // The name/email editor we built earlier
+import 'account_settings_screen.dart'; 
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,6 +16,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     const Color bgColor = Color(0xFFF9FAFB);
+
+    // Get initials for the avatar (e.g., "Qasim Qamar" -> "QQ")
+    String initials = "ST";
+    if (user != null && user!.displayName != null && user!.displayName!.isNotEmpty) {
+      List<String> names = user!.displayName!.split(" ");
+      if (names.length >= 2) {
+        initials = "${names[0][0]}${names[1][0]}".toUpperCase();
+      } else {
+        initials = names[0].substring(0, 1).toUpperCase();
+      }
+    }
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -37,11 +48,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   width: 60, height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: const Color(0xFF6B4EFF).withValues(alpha: 0.2), // Soft Purple
                     shape: BoxShape.circle,
-                    image: const DecorationImage(
-                      image: NetworkImage('https://ui-avatars.com/api/?name=User&background=random&size=200'),
-                      fit: BoxFit.cover,
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials, 
+                      style: const TextStyle(color: Color(0xFF6B4EFF), fontWeight: FontWeight.bold, fontSize: 20)
                     ),
                   ),
                 ),
@@ -60,7 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 32),
 
-            // --- GROUP 1: ACCOUNT & CLOUD ---
+            // --- GROUP 1: ACCOUNT ---
             _buildSectionHeader('ACCOUNT & DATA'),
             _buildSettingsGroup(
               children: [
@@ -69,25 +82,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Account',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AccountSettingsScreen())),
                 ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.cloud_sync_outlined,
-                  title: 'Cloud Sync',
-                  trailingText: 'Enabled',
-                  onTap: () => _showComingSoon(context, 'Cloud Sync'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.backup_outlined,
-                  title: 'Backup and restore',
-                  onTap: () => _showComingSoon(context, 'Backup & Restore'),
-                ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // --- GROUP 2: PLANNER & SCHEDULE ---
-            _buildSectionHeader('PLANNER & SCHEDULE'),
+            // --- GROUP 2: PREFERENCES ---
+            _buildSectionHeader('APP SETTINGS'),
             _buildSettingsGroup(
               children: [
                 _buildSettingsTile(
@@ -95,84 +95,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Notifications',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
                 ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.calendar_view_week_outlined,
-                  title: 'Timetable and Calendar',
-                  onTap: () => _showComingSoon(context, 'Timetable Layout'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.school_outlined,
-                  title: 'Semesters & Terms',
-                  onTap: () => _showComingSoon(context, 'Term Management'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.beach_access_outlined,
-                  title: 'Holidays',
-                  onTap: () => _showComingSoon(context, 'Holidays'),
-                ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // --- GROUP 3: APP PREFERENCES ---
-            _buildSectionHeader('PREFERENCES'),
+            // --- GROUP 3: ABOUT ---
+            _buildSectionHeader('SYSTEM'),
             _buildSettingsGroup(
               children: [
-                _buildSettingsTile(
-                  icon: Icons.palette_outlined,
-                  title: 'Look and appearance',
-                  trailingText: 'Default',
-                  onTap: () => _showComingSoon(context, 'Themes'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.tune,
-                  title: 'Advanced',
-                  onTap: () => _showComingSoon(context, 'Advanced Settings'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // --- GROUP 4: BILLING & SUPPORT ---
-            _buildSectionHeader('BILLING AND SUPPORT'),
-            _buildSettingsGroup(
-              children: [
-                _buildSettingsTile(
-                  icon: Icons.star_border_rounded,
-                  title: 'Premium',
-                  subtitle: 'Manage subscriptions and payments',
-                  iconColor: Colors.amber.shade700,
-                  onTap: () => _showComingSoon(context, 'Premium Upgrade'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.desktop_mac_outlined,
-                  title: 'Web App',
-                  subtitle: 'Access your data from your PC or Mac',
-                  onTap: () => _showComingSoon(context, 'Web Companion'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.rate_review_outlined,
-                  title: 'Write a review',
-                  onTap: () => _showComingSoon(context, 'App Store Review'),
-                ),
-                _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.support_agent_outlined,
-                  title: 'Contact us',
-                  onTap: () => _showComingSoon(context, 'Support Desk'),
-                ),
-                _buildDivider(),
                 _buildSettingsTile(
                   icon: Icons.info_outline,
                   title: 'About SmartStudy',
-                  trailingText: 'v2.4.0',
-                  onTap: () => _showComingSoon(context, 'About'),
+                  trailingText: 'v1.0.0', // Updated for your first launch!
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('SmartStudy is up to date.'), behavior: SnackBarBehavior.floating),
+                    );
+                  },
                 ),
               ],
             ),
@@ -207,10 +146,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFEEEEEE));
-  }
-
   Widget _buildSettingsTile({
     required IconData icon, 
     required String title, 
@@ -238,16 +173,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       onTap: onTap,
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature settings coming in Phase 3!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      )
     );
   }
 }

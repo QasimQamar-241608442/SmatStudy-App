@@ -4,21 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-class CourseAiScreen extends StatefulWidget {
-  final String courseId;
-  final String courseName;
+// Ensure these paths match your project structure
+import '../search/global_search_screen.dart';
+import '../notifications/notifications_screen.dart';
 
-  const CourseAiScreen({
-    super.key,
-    required this.courseId,
-    required this.courseName,
-  });
+class GlobalAiScreen extends StatefulWidget {
+  const GlobalAiScreen({super.key});
 
   @override
-  State<CourseAiScreen> createState() => _CourseAiScreenState();
+  State<GlobalAiScreen> createState() => _GlobalAiScreenState();
 }
 
-class _CourseAiScreenState extends State<CourseAiScreen> {
+class _GlobalAiScreenState extends State<GlobalAiScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
@@ -28,18 +25,11 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
 
   String get _userId => FirebaseAuth.instance.currentUser!.uid;
 
-  // This isolates the chat memory to THIS specific course!
+  // Global Chat Reference in Firebase
   CollectionReference get _chatRef => FirebaseFirestore.instance
       .collection('users')
       .doc(_userId)
-      .collection('semesters') // Ensure the path matches your database exactly!
-      .doc('CURRENT_SEMESTER_ID_IF_APPLICABLE') // Note: If your hierarchy requires semesterId here, you may need to pass it. If not, use the path below:
-      .collection('courses')
-      .doc(widget.courseId)
-      .collection('ai_chats');
-      
-  // *If your structure is just users -> uid -> courses -> courseId, use this instead:*
-  // CollectionReference get _chatRef => FirebaseFirestore.instance.collection('users').doc(_userId).collection('courses').doc(widget.courseId).collection('ai_chats');
+      .collection('global_ai_chats');
 
   Future<void> _sendMessage({String? predefinedMessage}) async {
     final message = predefinedMessage ?? _messageController.text.trim();
@@ -50,18 +40,20 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
     _scrollToBottom();
 
     try {
+      // 1. Save User Message
       await _chatRef.add({
         'role': 'user',
         'text': message,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // The AI is explicitly told which course it is tutoring!
+      // 2. Call Gemini (Global Context)
       final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: _apiKey);
-      final prompt = "You are SmartStudy AI, an elite university teaching assistant specifically for the course '${widget.courseName}'. Answer the student's query concisely, clearly, and use markdown for formatting if needed: $message";
+      final prompt = "You are SmartStudy AI, an elite, highly intelligent academic tutor. Answer the student's query concisely, clearly, and use markdown for formatting if needed: $message";
       
       final response = await model.generateContent([Content.text(prompt)]);
 
+      // 3. Save AI Response
       await _chatRef.add({
         'role': 'ai',
         'text': response.text ?? 'I could not generate a response.',
@@ -93,9 +85,10 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
   }
 
   void _showPdfUploadSimulation() {
+    // Simulating a PDF upload process since true local file reading requires external packages
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Upload ${widget.courseName} syllabus or lecture slides to parse. (Engine arriving in Phase 3)'),
+      const SnackBar(
+        content: Text('PDF Parsing Engine coming in Phase 3. Tell me what the document is about instead!'),
         behavior: SnackBarBehavior.floating,
       )
     );
@@ -111,7 +104,6 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
   @override
   Widget build(BuildContext context) {
     const Color bgColor = Color(0xFFF9FAFB);
-    const Color primaryPurple = Color(0xFF6B4EFF);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -119,16 +111,24 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
         backgroundColor: bgColor,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Column(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.courseName, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
-            const Text('AI Tutor', style: TextStyle(color: primaryPurple, fontWeight: FontWeight.bold, fontSize: 12)),
+            Icon(Icons.auto_awesome, color: Colors.black, size: 20),
+            SizedBox(width: 8),
+            Text('SmartStudy AI', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GlobalSearchScreen())),
+          ),
+          IconButton(
+            icon: const Badge(backgroundColor: Colors.red, child: Icon(Icons.notifications_none, color: Colors.black)),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -137,7 +137,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
               stream: _chatRef.orderBy('timestamp', descending: false).snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: primaryPurple));
+                  return const Center(child: CircularProgressIndicator(color: Colors.black));
                 }
                 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -157,7 +157,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
                         alignment: Alignment.centerLeft,
                         child: Padding(
                           padding: EdgeInsets.all(16.0),
-                          child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: primaryPurple)),
+                          child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
                         ),
                       );
                     }
@@ -165,13 +165,13 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
                     final msg = messages[index].data() as Map<String, dynamic>;
                     final isUser = msg['role'] == 'user';
 
-                    return _buildChatBubble(msg['text'] ?? '', isUser, primaryPurple);
+                    return _buildChatBubble(msg['text'] ?? '', isUser);
                   },
                 );
               },
             ),
           ),
-          _buildInputArea(primaryPurple),
+          _buildInputArea(),
         ],
       ),
     );
@@ -186,45 +186,41 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6B4EFF), 
-                borderRadius: BorderRadius.circular(24), 
-                boxShadow: [BoxShadow(color: const Color(0xFF6B4EFF).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))]
-              ),
+              decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))]),
               child: const Icon(Icons.auto_awesome, color: Colors.white, size: 40),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Your ${widget.courseName}\nTeaching Assistant',
+            const Text(
+              'How can I help you\nstudy today?',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.5),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.5),
             ),
             const SizedBox(height: 12),
             Text(
-              'I am trained specifically on this course. Upload your syllabus, paste lecture notes, or ask me to generate a custom quiz.',
+              'Upload your syllabus, ask complex questions, or let me build a personalized study plan.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[600], fontSize: 15, height: 1.4),
             ),
             const SizedBox(height: 40),
             
-            // Contextual Quick Action Cards
+            // Quick Action Cards
             _buildQuickActionCard(
               icon: Icons.upload_file,
-              title: 'Course Outline',
-              subtitle: 'Upload the PDF to extract deadlines.',
+              title: 'Summarize Document',
+              subtitle: 'Upload a PDF to extract key concepts.',
               onTap: _showPdfUploadSimulation,
             ),
             _buildQuickActionCard(
               icon: Icons.style,
               title: 'Generate Flashcards',
-              subtitle: 'Create a review set for ${widget.courseName}.',
-              onTap: () => _sendMessage(predefinedMessage: 'Can you generate 5 complex flashcards for the core concepts in ${widget.courseName}?'),
+              subtitle: 'Create a quick review set for an upcoming exam.',
+              onTap: () => _sendMessage(predefinedMessage: 'Can you generate 5 complex flashcards for Organic Chemistry?'),
             ),
             _buildQuickActionCard(
-              icon: Icons.assignment_turned_in,
-              title: 'Quiz Me',
-              subtitle: 'Test my knowledge on recent topics.',
-              onTap: () => _sendMessage(predefinedMessage: 'Ask me a difficult multiple-choice question related to ${widget.courseName}.'),
+              icon: Icons.calendar_month,
+              title: 'Build Study Plan',
+              subtitle: 'Organize my next 7 days of studying.',
+              onTap: () => _sendMessage(predefinedMessage: 'I have a Calculus Midterm in 7 days. Can you build me a daily study schedule?'),
             ),
           ],
         ),
@@ -248,8 +244,8 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0xFF6B4EFF).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: const Color(0xFF6B4EFF), size: 24),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: Colors.black, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -269,7 +265,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
     );
   }
 
-  Widget _buildChatBubble(String text, bool isUser, Color primaryPurple) {
+  Widget _buildChatBubble(String text, bool isUser) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -292,7 +288,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
             strong: TextStyle(color: isUser ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
             em: TextStyle(color: isUser ? Colors.white70 : Colors.black54, fontStyle: FontStyle.italic),
             listBullet: TextStyle(color: isUser ? Colors.white : Colors.black),
-            code: TextStyle(backgroundColor: isUser ? Colors.grey[800] : Colors.grey[100], color: isUser ? Colors.white : primaryPurple, fontFamily: 'monospace'),
+            code: TextStyle(backgroundColor: isUser ? Colors.grey[800] : Colors.grey[100], color: isUser ? Colors.white : Colors.red.shade800, fontFamily: 'monospace'),
             codeblockDecoration: BoxDecoration(color: isUser ? Colors.grey[900] : Colors.grey[100], borderRadius: BorderRadius.circular(8)),
           ),
         ),
@@ -300,7 +296,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
     );
   }
 
-  Widget _buildInputArea(Color primaryPurple) {
+  Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.all(24.0).copyWith(top: 12),
       color: const Color(0xFFF9FAFB),
@@ -309,6 +305,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.grey.shade300)),
         child: Row(
           children: [
+            // Attach PDF Button
             IconButton(
               icon: Icon(Icons.attach_file, color: Colors.grey[600]),
               onPressed: _showPdfUploadSimulation,
@@ -318,7 +315,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
                 controller: _messageController,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Ask about ${widget.courseName}...',
+                  hintText: 'Message SmartStudy AI...',
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
                   border: InputBorder.none,
                 ),
@@ -326,7 +323,7 @@ class _CourseAiScreenState extends State<CourseAiScreen> {
               ),
             ),
             Container(
-              decoration: BoxDecoration(color: primaryPurple, shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
               child: IconButton(
                 icon: const Icon(Icons.arrow_upward, color: Colors.white, size: 20),
                 onPressed: _isLoading ? null : () => _sendMessage(),

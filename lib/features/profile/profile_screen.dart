@@ -303,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // --- 5. APP FOOTER ---
                 Text(
-                  'SMARTSTUDY V2.4.0 • BUILT FOR ACADEMIC EXCELLENCE',
+                  'SMARTSTUDY V1.0.0 • BUILT FOR ACADEMIC EXCELLENCE',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[400], letterSpacing: 1.0),
                 ),
                 const SizedBox(height: 24),

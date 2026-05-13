@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../search/global_search_screen.dart';
-import '../notifications/notifications_screen.dart';
+
 class AddEditCourseScreen extends StatefulWidget {
   final String semesterId; 
+  final String? courseId; // Added: If this is null, we are ADDING. If it has text, we are EDITING.
+  final Map<String, dynamic>? existingData; // Added: The data to pre-fill the form
 
   const AddEditCourseScreen({
     super.key,
     required this.semesterId,
+    this.courseId,
+    this.existingData,
   });
 
   @override
@@ -16,21 +19,35 @@ class AddEditCourseScreen extends StatefulWidget {
 }
 
 class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
-  // 1. Text controllers for our fields
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _professorController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  // New Controller for Section
   final TextEditingController _sectionController = TextEditingController();
 
-  // 2. Data states
-  // Updated list for session maps
   final List<Map<String, dynamic>> _sessions = [];
-  // New state for Credit Hours (int counter)
-  int _creditHours = 3; // Default university class
+  int _creditHours = 3; 
 
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // If we are editing, pre-fill all the text boxes and variables!
+    if (widget.existingData != null) {
+      _codeController.text = widget.existingData!['code'] ?? '';
+      _titleController.text = widget.existingData!['title'] ?? '';
+      _professorController.text = widget.existingData!['professor'] ?? '';
+      _locationController.text = widget.existingData!['location'] ?? '';
+      _sectionController.text = widget.existingData!['section'] ?? '';
+      _creditHours = widget.existingData!['creditHours'] ?? 3;
+      
+      if (widget.existingData!['sessions'] != null) {
+        // Safely cast the dynamic list from Firebase back into our Dart list
+        _sessions.addAll(List<Map<String, dynamic>>.from(widget.existingData!['sessions']));
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -38,12 +55,11 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
     _titleController.dispose();
     _professorController.dispose();
     _locationController.dispose();
-    _sectionController.dispose(); // Always dispose of controllers
+    _sectionController.dispose(); 
     super.dispose();
   }
 
   Future<void> _saveCourse() async {
-    // Validation
     if (_codeController.text.isEmpty || _titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Course Code and Title are required.')),
@@ -55,27 +71,35 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
 
     try {
       final String uid = FirebaseAuth.instance.currentUser!.uid;
-
-      // 3. Database Injection: Now including Section and Credit Hours
-      await FirebaseFirestore.instance
+      final CollectionReference coursesRef = FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('semesters')
           .doc(widget.semesterId)
-          .collection('courses')
-          .add({
+          .collection('courses');
+
+      final Map<String, dynamic> courseData = {
         'code': _codeController.text.trim(),
         'title': _titleController.text.trim(),
         'professor': _professorController.text.trim(),
         'location': _locationController.text.trim(),
-        'section': _sectionController.text.trim(), // New database field
-        'creditHours': _creditHours, // New database field
+        'section': _sectionController.text.trim(),
+        'creditHours': _creditHours,
         'sessions': _sessions, 
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (widget.courseId == null) {
+        // ADD NEW COURSE
+        courseData['createdAt'] = FieldValue.serverTimestamp();
+        await coursesRef.add(courseData);
+      } else {
+        // UPDATE EXISTING COURSE
+        await coursesRef.doc(widget.courseId).update(courseData);
+      }
 
       if (mounted) {
-        Navigator.pop(context);
+        // Return true to signal that a change was made
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -90,7 +114,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
     }
   }
 
-  // Session Picker Logic from Turn 18 remains the same
   void _openSessionPicker() {
     final List<String> days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     String selectedDay = 'Monday';
@@ -101,9 +124,7 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -241,7 +262,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
     );
   }
 
-  // Session Card rendering remains the same
   Widget _buildSessionCard(Map<String, dynamic> session, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -292,42 +312,32 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic text based on mode
+    final String pageTitle = widget.courseId == null ? 'Course Details' : 'Edit Course';
+    final String pageSubtitle = widget.courseId == null ? 'Enter the core information for this class.' : 'Update the information for this class.';
+    final String buttonText = widget.courseId == null ? 'Save Course' : 'Update Course';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('SmartStudy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (context) => const GlobalSearchScreen())
       ),
-    ),
-          IconButton(
-            icon: const Badge(
-              backgroundColor: Colors.red,
-              child: Icon(Icons.notifications_none, color: Colors.black),
-      ),
-            onPressed: () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (context) => const NotificationsScreen())
-      ),
-    ),
-  ],
-),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Course Details', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(pageTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text('Enter the core information for this class.', style: TextStyle(color: Colors.grey, fontSize: 14)),
+              Text(pageSubtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 32),
 
               Row(
@@ -369,7 +379,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
 
               Row(
                 children: [
-                  // Professor Name (Takes up most of the row)
                   Expanded(
                     flex: 3,
                     child: Column(
@@ -389,7 +398,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // New Section Input (Takes up less space)
                   Expanded(
                     flex: 2,
                     child: Column(
@@ -424,7 +432,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
               ),
               const SizedBox(height: 40),
 
-              // THE NEW CREDIT HOURS COUNTER (Benchmarked from School Planner App)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -436,7 +443,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
                       Text('Weightage in your curriculum', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                     ],
                   ),
-                  // The - Number + Interface
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -463,7 +469,6 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
 
               const SizedBox(height: 40),
 
-              // Class Sessions header
               const Text('CLASS SESSIONS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 16),
               
@@ -510,7 +515,7 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
                   onPressed: _isLoading ? null : _saveCourse,
                   child: _isLoading 
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Save Course'),
+                    : Text(buttonText),
                 ),
               ),
             ],

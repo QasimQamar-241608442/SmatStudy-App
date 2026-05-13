@@ -4,7 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart'; 
-import 'global_add_task_screen.dart'; 
+import 'global_add_task_screen.dart';
+import 'daily_timetable_screen.dart';
 import '../search/global_search_screen.dart';
 import '../notifications/notifications_screen.dart';
 
@@ -331,7 +332,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           _selectedDay = selectedDay;
                           _focusedDay = focusedDay;
                         });
-                        _selectedEvents.value = _getEventsForDay(selectedDay);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DailyTimetableScreen(selectedDate: selectedDay),
+                          ),
+                        );
                       },
                       onPageChanged: (focusedDay) {
                         setState(() => _focusedDay = focusedDay);

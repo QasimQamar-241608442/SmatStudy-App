@@ -22,7 +22,7 @@ class _MainDashboardState extends State<MainDashboard> {
     const GradesScreen(),
     const AiScreen(),
     const ProfileScreen(),
-
+    
   ];
 
   @override

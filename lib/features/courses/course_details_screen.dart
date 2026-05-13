@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'add_edit_task_screen.dart';
-import 'course_ai_screen.dart'; // <-- ADDED: Import for your new AI Screen
+import 'course_ai_screen.dart'; 
+import 'add_edit_course_screen.dart'; // REQUIRED: So we can navigate to the edit screen!
 
 class CourseDetailsScreen extends StatelessWidget {
   final String semesterId;
@@ -22,6 +23,7 @@ class CourseDetailsScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white, // Ensure dialog is also pure white
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Delete Course?'),
           content: const Text('Are you sure you want to delete this course? This action cannot be undone and will remove all associated tasks.'),
@@ -72,10 +74,9 @@ class CourseDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // This line is to get the user ID!
     final String uid = FirebaseAuth.instance.currentUser!.uid;
     
-    // 1. Safely extract all our awesome new database fields!
+    // Safely extract all our awesome database fields!
     final String code = courseData['code'] ?? '';
     final String title = courseData['title'] ?? 'Untitled Course';
     final String professor = courseData['professor'] ?? 'Not specified';
@@ -84,7 +85,6 @@ class CourseDetailsScreen extends StatelessWidget {
     final int creditHours = courseData['creditHours'] ?? 3;
     final List<dynamic> sessions = courseData['sessions'] ?? [];
 
-    // Format a quick string for the subtitle
     String subtitle = code;
     if (section.isNotEmpty) subtitle += ' • Sec $section';
     subtitle += ' • $creditHours Credits';
@@ -99,9 +99,32 @@ class CourseDetailsScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
-            onSelected: (value) {
+            // --- FIX 1: FORCE PURE WHITE BACKGROUND ---
+            color: Colors.white,
+            surfaceTintColor: Colors.white, 
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            // ------------------------------------------
+            onSelected: (value) async {
               if (value == 'delete') {
                 _deleteCourse(context);
+              } else if (value == 'edit') {
+                // --- FIX 2: PROPER ROUTING TO THE EDIT SCREEN ---
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddEditCourseScreen(
+                      semesterId: semesterId,
+                      courseId: courseId, // Triggers Edit Mode
+                      existingData: courseData, // Passes the data to pre-fill the form
+                    ),
+                  ),
+                );
+                
+                // Once we return from the edit screen, pop this details screen
+                // so the user returns to the main list which will auto-refresh with the new data!
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               }
             },
             itemBuilder: (BuildContext context) => [
@@ -134,7 +157,7 @@ class CourseDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 2. The Hero Header
+            // The Hero Header
             Text(title, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, height: 1.1)),
             const SizedBox(height: 8),
             Text(subtitle, style: TextStyle(fontSize: 15, color: Colors.grey[700], fontWeight: FontWeight.w500)),
@@ -164,7 +187,7 @@ class CourseDetailsScreen extends StatelessWidget {
             
             const SizedBox(height: 12),
 
-            // --- ADDED: THE NEW AI TUTOR BUTTON ---
+            // THE AI TUTOR BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -174,13 +197,13 @@ class CourseDetailsScreen extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (context) => CourseAiScreen(
                         courseId: courseId,
-                        courseName: title, // Passes the actual course title to the AI!
+                        courseName: title, 
                       ),
                     ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B4EFF), // A beautiful purple to make it stand out
+                  backgroundColor: const Color(0xFF6B4EFF),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
@@ -189,11 +212,10 @@ class CourseDetailsScreen extends StatelessWidget {
                 label: Text('Open $code AI Tutor', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
-            // --------------------------------------
-
+            
             const SizedBox(height: 40),
 
-            // 3. Schedule & Venue (Dynamically rendering our array!)
+            // Schedule & Venue
             const Text('Schedule & Venue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Container(
@@ -249,7 +271,7 @@ class CourseDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
-            // 4. Instructor Profile
+            // Instructor Profile
             const Text('Instructor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Row(
@@ -274,10 +296,10 @@ class CourseDetailsScreen extends StatelessWidget {
             
             const SizedBox(height: 40),
 
-            // 5. Upcoming Tasks 
+            // Upcoming Tasks 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+              children: [
                 const Text('Upcoming Assignments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 TextButton(
                   onPressed: () {
@@ -285,8 +307,8 @@ class CourseDetailsScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => AddEditTaskScreen(
-                          semesterId: semesterId, // Passed from the top of CourseDetailsScreen
-                          courseId: courseId,     // Passed from the top of CourseDetailsScreen
+                          semesterId: semesterId, 
+                          courseId: courseId,     
                         ),
                       ),
                     );
@@ -308,7 +330,7 @@ class CourseDetailsScreen extends StatelessWidget {
                   .collection('courses')
                   .doc(courseId)
                   .collection('tasks')
-                  .orderBy('dueDate') // Sorts them so the closest deadline is at the top!
+                  .orderBy('dueDate') 
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -319,7 +341,6 @@ class CourseDetailsScreen extends StatelessWidget {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  // If there are no tasks, we show your beautiful placeholder
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
@@ -336,25 +357,21 @@ class CourseDetailsScreen extends StatelessWidget {
                   );
                 }
 
-                // If we have tasks, we build the list!
                 return ListView.builder(
-                  shrinkWrap: true, // Crucial when putting a ListView inside a SingleChildScrollView
+                  shrinkWrap: true, 
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
                     var doc = snapshot.data!.docs[index];
                     var data = doc.data() as Map<String, dynamic>;
 
-                    // Extract the data
                     String title = data['title'] ?? 'Untitled';
                     String type = data['type'] ?? 'Task';
                     bool isUrgent = data['isUrgent'] ?? false;
                     
-                    // Format the Timestamp into a readable date
                     Timestamp timestamp = data['dueDate'] as Timestamp;
                     DateTime dueDate = timestamp.toDate();
                     
-                    // Simple logic to show "Today", "Tomorrow", or the Date
                     DateTime now = DateTime.now();
                     String dateString = '${dueDate.month}/${dueDate.day}/${dueDate.year}';
                     if (dueDate.year == now.year && dueDate.month == now.month && dueDate.day == now.day) {
@@ -363,15 +380,12 @@ class CourseDetailsScreen extends StatelessWidget {
                       dateString = 'Tomorrow';
                     }
 
-                    // Grab the unique Firestore ID for this specific task
                     String taskId = doc.id;
 
-                    // Wrap the card in a Dismissible for swipe-to-delete!
                     return Dismissible(
-                      key: Key(taskId), // Dismissible needs a unique key
-                      direction: DismissDirection.endToStart, // Swipe from right to left
+                      key: Key(taskId), 
+                      direction: DismissDirection.endToStart, 
                       
-                      // The red background that reveals itself when you swipe
                       background: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
@@ -383,10 +397,8 @@ class CourseDetailsScreen extends StatelessWidget {
                         child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
                       ),
                       
-                      // The action that fires when the swipe completes
                       onDismissed: (direction) async {
                         try {
-                          // Tell Firestore to delete this specific task document
                           await FirebaseFirestore.instance
                               .collection('users')
                               .doc(uid)
@@ -420,7 +432,6 @@ class CourseDetailsScreen extends StatelessWidget {
                         }
                       },
                       
-                      // The actual visual card sitting on top
                       child: _buildTaskCard(
                         title: title,
                         type: type,
@@ -439,7 +450,6 @@ class CourseDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget to draw individual Task Cards
   Widget _buildTaskCard({
     required String title,
     required String type,
@@ -456,7 +466,6 @@ class CourseDetailsScreen extends StatelessWidget {
       child: IntrinsicHeight(
         child: Row(
           children: [
-            // The colored priority indicator bar on the left
             Container(
               width: 4,
               decoration: BoxDecoration(
