@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Ensure these paths match where you saved the files in your project!
-import '../search/global_search_screen.dart';
 import '../notifications/notifications_screen.dart';
-import 'settings_screen.dart'; // The new Master Settings Hub
+import 'account_settings_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,153 +13,81 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
-  
-  bool _isLoading = true;
-  double _cumulativeGPA = 0.0;
-  int _earnedCredits = 0;
-  int _totalRequiredCredits = 120; // Default, can be changed by the user!
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserDataAndCalculateGPA();
-  }
+  // --- THE DEGREE EDITING LOGIC ---
+  Future<void> _editDegreeDialog(String currentDegree) async {
+    final TextEditingController degreeController = TextEditingController(
+      text: currentDegree == 'Add your degree' ? '' : currentDegree
+    );
 
-  // --- THE DATA ENGINE ---
-  Future<void> _fetchUserDataAndCalculateGPA() async {
-    if (user == null) return;
-
-    try {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(user!.uid);
-      
-      // 1. Fetch user preferences (like custom required credits)
-      final userDoc = await userRef.get();
-      if (userDoc.exists && userDoc.data() != null) {
-        final data = userDoc.data() as Map<String, dynamic>;
-        if (data.containsKey('requiredCredits')) {
-          _totalRequiredCredits = data['requiredCredits'];
-        }
-      }
-
-      // 2. Fetch all semesters and calculate GPA / Earned Credits
-      final semestersSnapshot = await userRef.collection('semesters').get();
-
-      double totalQualityPoints = 0.0;
-      int calculatedCredits = 0;
-
-      for (var semester in semestersSnapshot.docs) {
-        final coursesSnapshot = await semester.reference.collection('courses').get();
-        
-        for (var course in coursesSnapshot.docs) {
-          final data = course.data();
-          final int credits = data['creditHours'] ?? 3; 
-          final String? grade = data['grade']; 
-
-          // Only calculate courses that have a final grade
-          if (grade != null && grade.isNotEmpty) {
-            double gradePoint = _convertGradeToPoints(grade);
-            totalQualityPoints += (gradePoint * credits);
-            calculatedCredits += credits;
-          }
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _cumulativeGPA = calculatedCredits > 0 ? (totalQualityPoints / calculatedCredits) : 0.0;
-          _earnedCredits = calculatedCredits;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching data: $e");
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  double _convertGradeToPoints(String grade) {
-    switch (grade.toUpperCase().trim()) {
-      case 'A+': return 4.0;
-      case 'A':  return 4.0;
-      case 'A-': return 3.7;
-      case 'B+': return 3.3;
-      case 'B':  return 3.0;
-      case 'B-': return 2.7;
-      case 'C+': return 2.3;
-      case 'C':  return 2.0;
-      case 'C-': return 1.7;
-      case 'D+': return 1.3;
-      case 'D':  return 1.0;
-      case 'F':  return 0.0;
-      default:   return 0.0;
-    }
-  }
-
-  // --- THE CREDIT EDITOR ---
-  void _showEditCreditsDialog() {
-    final TextEditingController creditsController = TextEditingController(text: _totalRequiredCredits.toString());
-    
-    showDialog(
+    await showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Required Credits', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Set the total credits required to complete your specific degree program.', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: creditsController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: 'e.g., 120',
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-                autofocus: true,
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Update Degree', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: degreeController,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            hintText: 'e.g. B.S. Mechanical Engineering',
+            hintStyle: TextStyle(color: Colors.grey[400]),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFB),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (degreeController.text.trim().isNotEmpty && user != null) {
+                // Update or create the degree field in the user's Firestore document
+                await FirebaseFirestore.instance.collection('users').doc(user!.uid).set(
+                  {'degree': degreeController.text.trim()},
+                  SetOptions(merge: true) // Merge ensures we don't overwrite existing data like name/email
+                );
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final newValue = int.tryParse(creditsController.text.trim());
-                if (newValue != null && newValue > 0) {
-                  Navigator.pop(context);
-                  setState(() => _totalRequiredCredits = newValue);
-                  
-                  // Save to Firebase!
-                  await FirebaseFirestore.instance.collection('users').doc(user!.uid)
-                      .set({'requiredCredits': newValue}, SetOptions(merge: true));
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      }
+            child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
+    // Your AuthWrapper will automatically handle routing back to the Login Screen!
   }
 
   @override
   Widget build(BuildContext context) {
     const Color bgColor = Color(0xFFF9FAFB);
-    final String displayName = user?.displayName ?? 'Student';
-    // Generate a fallback ID for the UI
-    final String studentId = user?.uid.substring(0, 8).toUpperCase() ?? 'ST-9842';
+
+    if (user == null) return const Center(child: CircularProgressIndicator(color: Colors.black));
+
+    // Generate Initials
+    String initials = "US";
+    if (user!.displayName != null && user!.displayName!.isNotEmpty) {
+      List<String> names = user!.displayName!.split(" ");
+      initials = names.length >= 2 
+          ? "${names[0][0]}${names[1][0]}".toUpperCase() 
+          : names[0].substring(0, 1).toUpperCase();
+    }
+
+    // Generate a mock student ID from the Firebase UID (first 10 chars)
+    String studentId = user!.uid.substring(0, 10).toUpperCase();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -172,201 +97,182 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('SmartStudy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
+          IconButton(icon: const Icon(Icons.search, color: Colors.black), onPressed: () {}),
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black), 
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GlobalSearchScreen())),
-          ),
-          IconButton(
-            icon: const Badge(backgroundColor: Colors.red, child: Icon(Icons.notifications_none, color: Colors.black)),
+            icon: const Badge(backgroundColor: Colors.red, child: Icon(Icons.notifications_none, color: Colors.black)), 
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
           ),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Colors.black))
-        : SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      // --- REAL-TIME FIRESTORE LISTENER ---
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection('users').doc(user!.uid).snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Colors.black));
+          }
+
+          // Extract data from Firestore, defaulting if it doesn't exist yet
+          Map<String, dynamic>? userData = snapshot.data?.data() as Map<String, dynamic>?;
+          String currentDegree = userData?['degree'] ?? 'Add your degree';
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // --- 1. PREMIUM AVATAR HEADER ---
+                // --- AVATAR ---
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
                     Container(
                       width: 100, height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        shape: BoxShape.circle,
-                        image: const DecorationImage(
-                          // Placeholder image
-                          image: NetworkImage('https://ui-avatars.com/api/?name=User&background=random&size=200'),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                      decoration: BoxDecoration(color: Colors.blueGrey.shade300, shape: BoxShape.circle),
+                      child: Center(child: Text(initials, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 36))),
                     ),
                     Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(color: Colors.black, shape: BoxShape.circle, border: Border.all(color: bgColor, width: 3)),
-                      child: const Icon(Icons.edit, color: Colors.white, size: 14),
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                      child: const Icon(Icons.edit, color: Colors.white, size: 16),
                     )
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(displayName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                Text('ID: 2024-$studentId • B.S. Computer Science', style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500)),
-                const SizedBox(height: 32),
 
-                // --- 2. THE STATS GRID ---
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'CURRENT GPA',
-                        value: _cumulativeGPA > 0 ? _cumulativeGPA.toStringAsFixed(2) : '--',
-                        total: '/ 4.0',
-                        onTap: null, // GPA isn't manually editable
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'COMPLETED CREDITS',
-                        value: _earnedCredits.toString(),
-                        total: '/ $_totalRequiredCredits',
-                        onTap: _showEditCreditsDialog, // Make this clickable!
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-
-                // --- 3. SETTINGS & PREFERENCES BLOCK ---
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('SETTINGS & PREFERENCES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildSettingsTile(
-                        icon: Icons.settings_outlined, 
-                        title: 'App Settings',
-                        onTap: () async {
-                          // Wait for the settings screen to close, then refresh the profile to reflect any name changes!
-                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-                          setState(() {}); 
-                        }
-                      ),
-                      const Divider(height: 1, indent: 60),
-                      _buildSettingsTile(
-                        icon: Icons.notifications_none, 
-                        title: 'Notifications',
-                        subtitle: 'Manage alerts',
-                        trailingText: 'View',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 40),
-
-                // --- 4. THE LOGOUT BUTTON ---
-                GestureDetector(
-                  onTap: _signOut,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                // --- NAME & DYNAMIC DEGREE ---
+                Text(user?.displayName ?? 'Student', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                
+                // Wrap the ID/Degree in an InkWell so the user can tap it to edit!
+                InkWell(
+                  onTap: () => _editDegreeDialog(currentDegree),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.logout, color: Colors.red, size: 20),
-                        SizedBox(width: 8),
-                        Text('Log out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text('ID: $studentId • $currentDegree', style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500)),
+                        const SizedBox(width: 6),
+                        Icon(Icons.edit, size: 14, color: Colors.grey[400]), // Small hint that it's clickable
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // --- 5. APP FOOTER ---
-                Text(
-                  'SMARTSTUDY V1.0.0 • BUILT FOR ACADEMIC EXCELLENCE',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[400], letterSpacing: 1.0),
+                // --- ACADEMIC STATS ---
+                Row(
+                  children: [
+                    Expanded(child: _buildStatCard('CURRENT GPA', '— / 4.0')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildStatCard('COMPLETED CREDITS', '0 / 120')),
+                  ],
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-    );
-  }
+                const SizedBox(height: 40),
 
-  // Custom Stat Card Widget
-  Widget _buildStatCard({required String title, required String value, required String total, required VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600], letterSpacing: 0.5)),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(value, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, height: 1.0)),
-                const SizedBox(width: 4),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(total, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                // --- SETTINGS LIST ---
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('SETTINGS & PREFERENCES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[500], letterSpacing: 1.2)),
                 ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade200)),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: Icons.settings_outlined,
+                        title: 'App Settings',
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AccountSettingsScreen())),
+                      ),
+                      const Divider(height: 1, indent: 60),
+                      _buildSettingsTile(
+                        icon: Icons.notifications_none,
+                        title: 'Notifications',
+                        subtitle: 'Manage alerts',
+                        subtitleColor: Colors.red,
+                        trailingText: 'View',
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // --- LOG OUT BUTTON ---
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _signOut,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: Colors.grey.shade200),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    label: const Text('Log out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                Text('SMARTSTUDY V1.0.0 • BUILT FOR ACADEMIC EXCELLENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[400], letterSpacing: 1.0)),
+                const SizedBox(height: 40),
               ],
             ),
-          ],
-        ),
+          );
+        }
       ),
     );
   }
 
-  // Custom Settings Tile Widget
-  Widget _buildSettingsTile({required IconData icon, required String title, String? subtitle, String? trailingText, required VoidCallback onTap}) {
+  // --- HELPER WIDGETS ---
+
+  Widget _buildStatCard(String title, String value) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500], letterSpacing: 0.5)),
+          const SizedBox(height: 16),
+          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile({
+    required IconData icon, 
+    required String title, 
+    String? subtitle, 
+    Color? subtitleColor,
+    String? trailingText, 
+    required VoidCallback onTap
+  }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: Colors.black87, size: 22),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600)) : null,
-      trailing: trailingText != null 
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(trailingText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[500], decoration: TextDecoration.underline)),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right, color: Colors.grey),
-              ],
-            )
-          : const Icon(Icons.chevron_right, color: Colors.grey),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: subtitleColor ?? Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500)) : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailingText != null) 
+            Text(trailingText, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right, color: Colors.grey),
+        ],
+      ),
       onTap: onTap,
     );
   }

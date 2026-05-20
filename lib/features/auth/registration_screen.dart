@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -22,16 +24,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       setState(() => _isLoading = true);
       
       try {
-        // 1. Create the user in Firebase
+        // 1. Create the user in Firebase Auth
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // 2. Add their display name to their profile
+        // 2. Add their display name to their Auth profile
         await userCredential.user!.updateDisplayName(_nameController.text.trim());
 
-        // 3. Pop this screen off. 
+        // 3. IMPORTANT: Create their user document in Firestore!
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'email': _emailController.text.trim(),
+          'name': _nameController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // 4. Pop this screen off. 
         // Because they are now logged in, the AuthWrapper in main.dart 
         // will automatically detect the change and show the Dashboard!
         if (mounted) {
@@ -44,30 +53,72 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         } else if (e.code == 'weak-password') {
           errorMessage = 'The password provided is too weak.';
         }
-        // --- ADD THIS LINE ---
+        
         if (!mounted) return; 
-        // ---------------------
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            backgroundColor: Colors.red.shade800,
-            behavior: SnackBarBehavior.floating,
-          ),
-        ); 
-        
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            backgroundColor: Colors.red.shade800,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBarMessage(errorMessage, isError: true);
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
     }
+  }
+
+  // --- THE GOOGLE ENGINE ---
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      // Paste your copied ID inside the quotes below!
+      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+        clientId: '680129385454-nb3794bt4gkrdnmduao1qbe91s0t0iqd.apps.googleusercontent.com', 
+      ).signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return; // The user canceled the sign-in
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Ensure the user has a Firestore document (in case they sign up via Google)
+      if (userCredential.user != null) {
+        final userRef = FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
+        final doc = await userRef.get();
+        if (!doc.exists) {
+          await userRef.set({
+            'email': userCredential.user!.email,
+            'name': userCredential.user!.displayName ?? 'Student',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+      
+      if (mounted) {
+        Navigator.pop(context); // Return to previous screen so AuthWrapper can take over
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackBarMessage('Google Sign-In failed: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBarMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: isError ? Colors.red.shade800 : Colors.black87,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -85,7 +136,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black), // Makes the back arrow black
+        iconTheme: const IconThemeData(color: Colors.black), 
       ),
       body: SafeArea(
         child: Center(
@@ -178,7 +229,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         ),
                         const SizedBox(height: 32),
                         
-                        // REGISTER BUTTON
+                        // EMAIL REGISTER BUTTON
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -193,6 +244,43 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 : const Text('Create Account', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                           ),
                         ),
+
+                        // --- GOOGLE SIGN UP INTEGRATION ---
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text('OR', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: OutlinedButton(
+                            onPressed: _isLoading ? null : _signInWithGoogle,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.g_mobiledata, color: Colors.black, size: 32), 
+                                const SizedBox(width: 8),
+                                Text('Sign up with Google', style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.bold, fontSize: 15)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // ----------------------------------
+
                       ],
                     ),
                   ),

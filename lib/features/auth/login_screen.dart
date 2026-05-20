@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,7 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 1. THE FORM KEY: This is the brain of your validation
   final _formKey = GlobalKey<FormState>();
   
   final TextEditingController _emailController = TextEditingController();
@@ -18,9 +19,11 @@ class _LoginScreenState extends State<LoginScreen> {
   
   bool _obscurePassword = true;
   bool _isLoading = false;
+  
+  // --- NEW: Track failed attempts ---
+  int _failedAttempts = 0;
 
   Future<void> _login() async {
-    // 2. THE VALIDATION CHECK: Only proceed if the form passes all rules
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       
@@ -29,28 +32,107 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        // If successful, your AuthWrapper in main.dart will automatically 
-        // detect the login and send the user to the Dashboard!
+        // Reset attempts on success
+        setState(() => _failedAttempts = 0);
+        
       } on FirebaseAuthException catch (e) {
-        // Show Firebase errors (like wrong password) to the user
+        // Increment failed attempts on error
+        setState(() => _failedAttempts++);
+
         String errorMessage = 'Login failed. Please try again.';
         if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-          errorMessage = 'Incorrect email or password.';
+          errorMessage = 'Incorrect email or password. Attempt $_failedAttempts/3';
         }
-        _showFakeButtonMessage(errorMessage, isError: true);
+        
+        // Show an extra hint if they hit the limit
+        if (_failedAttempts >= 3) {
+          errorMessage = 'Too many failed attempts. You can now reset your password.';
+        }
+        
+        _showSnackBarMessage(errorMessage, isError: true);
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
-  // 3. THE "CLICKABLE ELEMENTS" TRICK: Reusable SnackBar function
-  void _showFakeButtonMessage(String message, {bool isError = false}) {
+  // --- NEW: Firebase Password Reset Engine ---
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    
+    if (email.isEmpty) {
+      _showSnackBarMessage('Please enter your email address first to reset your password.', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      _showSnackBarMessage('Password reset link sent! Please check your email inbox.', isError: false);
+      
+      // Optionally reset the counter so the button hides again after a reset link is sent
+      setState(() => _failedAttempts = 0);
+      
+    } on FirebaseAuthException catch (e) {
+      String errorMsg = 'Failed to send reset email.';
+      if (e.code == 'user-not-found') {
+        errorMsg = 'No account found with this email.';
+      }
+      _showSnackBarMessage(errorMsg, isError: true);
+    } catch (e) {
+      _showSnackBarMessage('An unexpected error occurred.', isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+        clientId: '680129385454-nb3794bt4gkrdnmduao1qbe91s0t0iqd.apps.googleusercontent.com', 
+      ).signIn();
+      
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return; 
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        final userRef = FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
+        final doc = await userRef.get();
+        if (!doc.exists) {
+          await userRef.set({
+            'email': userCredential.user!.email,
+            'name': userCredential.user!.displayName ?? 'Student',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackBarMessage('Google Sign-In failed: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBarMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: isError ? Colors.red.shade800 : Colors.black87,
-        duration: const Duration(seconds: 2),
+        backgroundColor: isError ? Colors.red.shade800 : Colors.green.shade700,
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -95,7 +177,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: Colors.grey.shade200),
                   ),
-                  // WRAP THE INPUTS IN A FORM WIDGET
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -104,7 +185,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Text('EMAIL ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
                         const SizedBox(height: 8),
                         
-                        // EMAIL FIELD WITH VALIDATION
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -120,16 +200,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Email is required';
                             }
-                            
-                            // 1. Check for standard email format using Regex
                             final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
                             if (!emailRegex.hasMatch(value)) {
                               return 'Please enter a valid email format';
                             }
-
-                            // The .edu check has been completely removed!
-
-                            return null; // Passes all tests!
+                            return null;
                           },
                         ),
                         
@@ -139,16 +214,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('PASSWORD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
-                            // FAKE BUTTON 1: Forgot Password
-                            GestureDetector(
-                              onTap: () => _showFakeButtonMessage('Password reset flow coming in v2.0!'),
-                              child: const Text('Forgot?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
-                            ),
+                            
+                            // --- NEW: Conditional Forgot Password Button ---
+                            if (_failedAttempts >= 3)
+                              GestureDetector(
+                                onTap: _resetPassword,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(4)
+                                  ),
+                                  child: Text('Forgot Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+                                ),
+                              )
+                            else
+                              const SizedBox.shrink(), // Takes up zero space until 3 failures
+                            // -----------------------------------------------
                           ],
                         ),
                         const SizedBox(height: 8),
                         
-                        // PASSWORD FIELD WITH VALIDATION
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -181,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         
                         const SizedBox(height: 32),
                         
-                        // LOGIN BUTTON
+                        // EMAIL LOGIN BUTTON
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -203,16 +289,50 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
+
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text('OR', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: OutlinedButton(
+                            onPressed: _isLoading ? null : _signInWithGoogle,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.g_mobiledata, color: Colors.black, size: 32), 
+                                const SizedBox(width: 8),
+                                Text('Continue with Google', style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.bold, fontSize: 15)),
+                              ],
+                            ),
+                          ),
+                        ),
+
                       ],
                     ),
                   ),
                 ),
                 
                 const SizedBox(height: 32),
-                // REAL BUTTON 2: Sign Up
+                
                 GestureDetector(
                   onTap: () {
-                    // This pushes the new Registration Screen onto the screen!
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const RegistrationScreen()),
