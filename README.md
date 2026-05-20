@@ -1,94 +1,123 @@
-markdown_content = """
-# SmartStudy 📚
+📚 SmartStudy AI – Timetable & Learning Assistant
+A smart academic planning Android application built with Flutter and Firebase, designed to help university students organize their study schedules, manage courses, and generate AI-powered learning content.
 
-> Elevate your academic workflow.
+🎯 Overview
+SmartStudy AI solves a common problem for university students: the lack of intelligent, structured tools for academic planning. Students can upload course outlines, get AI-generated study notes and schedules, track deadlines, and manage their academic workload — all in one place.
+Target Audience: University students, college students, and self-learners.
 
-SmartStudy is a premium, fully-functional Flutter application designed specifically for students. It acts as a comprehensive academic planner, combining traditional course and task management with real-time syncing, intelligent search, and synthesized AI study insights.
+✨ Features
+Core Features
 
-## ✨ Key Features
+🔐 User Authentication – Email/password login with Firebase Auth and session persistence
+🗄️ Database Integration – Local storage (SQLite/Hive) + Firestore with full CRUD and offline sync
+🌐 RESTful API Integration – External AI API for study notes and schedule generation
+🖥️ UI & Navigation – 7+ screens with Material Design 3 and Google Fonts (Inter)
+📷 Media Handling – Camera/gallery access, file uploads, Firebase Storage
+🔍 Search & Filter – Real-time global search with multiple filters and sort options
+⚠️ Error Handling & Validation – Form validation, network error handling, and Firebase error management
+⚙️ Settings & User Preferences – Profile management, account settings, and persistent preferences
 
-* **Secure Authentication:** Includes traditional Email/Password login, seamless Google Sign-In (OAuth 2.0), password reset functionality, and complete account data deletion capabilities.
-* **The Academic Core:** Build your academic timeline. Add and manage Semesters, nested Courses, and specific Tasks or Assignments. 
-* **Global Smart Search:** A real-time, cross-category search engine. Filter by Courses, Deadlines, Files, or Professors instantly. Includes a dynamic "Zero-State" dashboard showcasing recent activity and urgent deadlines.
-* **Intelligent Notifications:** No static alerts here. The Smart Synthesis Engine dynamically reads your Firestore data to alert you of urgent deadlines (with countdowns), newly posted materials, simulated grade releases, and AI-driven study pattern insights.
-* **Dynamic Profile Management:** Track your overall GPA and completed credits. Edit your specific degree program on the fly, synced directly to your cloud profile.
+Advanced Features
 
-## 🛠 Tech Stack
+🤖 AI-Powered Notes – Generate structured study notes from course outlines via AI API
+📅 Smart Planner – Automated timetable and daily schedule generation
+🔔 Push Notifications – Deadline and study reminders
+📊 Grades & Analytics – Track academic performance and study progress
 
-* **Frontend:** [Flutter](https://flutter.dev/) (Dart)
-* **Backend / Database:** [Firebase Cloud Firestore](https://firebase.google.com/docs/firestore)
-* **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth) & [Google Sign-In](https://pub.dev/packages/google_sign_in)
-* **Architecture:** Feature-first directory structure with StreamBuilder for real-time reactive UI.
 
-## 📱 Screen Flow & Architecture
+🖼️ App Screens
+#ScreenDescription1Splash ScreenApp launch and initialization2Login / RegistrationAuthentication with Firebase3Home DashboardToday's tasks, upcoming deadlines, study hours4Courses ManagementAdd, edit, and organize courses and semesters5Study PlannerAI-generated weekly study schedule6Daily TimetableDay-by-day task and time management7AI Notes ScreenAI-generated notes from course outlines8Global AI ScreenGeneral AI-powered study assistant9Grades ScreenTrack grades and academic performance10NotificationsManage reminders and alerts11Global SearchSearch across courses, tasks, and notes12Profile & SettingsUser profile, account settings, preferences
 
-1.  **Auth Module (`/auth`)**
-    * `LoginScreen`: Email/password and Google login. Handles 3-strike failed attempt logic revealing a password reset flow.
-    * `RegistrationScreen`: User creation with automated Firestore document initialization.
-2.  **Dashboard & Core (`/dashboard`, `/courses`)**
-    * `SemestersView`: The academic journey hub. Real-time list of semesters with secure, context-aware deletion menus.
-    * (Includes underlying screens for Courses and Task management).
-3.  **Discovery (`/search`, `/notifications`)**
-    * `GlobalSearchScreen`: The central search engine with interactive filtering chips and dynamic empty states.
-    * `NotificationsScreen`: Activity feed synthesizing Firestore deadlines and creation timestamps into actionable alerts.
-4.  **Profile (`/profile`)**
-    * `ProfileScreen`: User identity, dynamic degree editing via dialogs, and top-level settings routing.
-    * `AccountSettingsScreen`: Data management hub featuring secure multi-step account deletion.
+🛠️ Tech Stack
+LayerTechnologyFrameworkFlutter (Dart)AuthenticationFirebase AuthenticationCloud DatabaseFirebase FirestoreLocal StorageSQLite / HiveFile StorageFirebase StorageAI IntegrationExternal AI REST APIUI StylingMaterial Design 3, Google Fonts (Inter)State ManagementFlutter built-in (StatefulWidget)
 
-## 🚀 Getting Started
+📁 Project Structure
+lib/
+├── main.dart                        # App entry point & Firebase initialization
+├── firebase_options.dart            # Firebase platform configuration
+├── core/
+│   └── theme/
+│       └── app_theme.dart           # Global app theme (Material 3)
+└── features/
+    ├── auth/                        # Login, registration, auth wrapper
+    ├── splash/                      # Splash screen
+    ├── dashboard/                   # Home dashboard, courses view, semesters
+    ├── home/                        # Main home screen
+    ├── courses/                     # Course & task management
+    ├── planner/                     # Daily timetable & global task planner
+    ├── ai/                          # AI notes & global AI assistant
+    ├── grades/                      # Grades tracking
+    ├── notifications/               # Push notifications
+    ├── search/                      # Global search
+    └── profile/                     # Profile, settings, account management
 
-### Prerequisites
-* Flutter SDK (v3.0.0+)
-* A Firebase Project with Authentication (Email/Password & Google) and Firestore enabled.
+🚀 Getting Started
+Prerequisites
 
-### Installation
+Flutter SDK (3.x or higher)
+Dart SDK
+Android Studio or VS Code with Flutter extension
+A Firebase project (see setup below)
 
-1.  **Clone the repository:**
-    ```
-```text?code_stdout&code_event_index=2
-README.md generated successfully.
+Installation
 
-```bash
-    git clone [https://github.com/yourusername/smartstudy.git](https://github.com/yourusername/smartstudy.git)
-    cd smart_study
-    ```
+Clone the repository
 
-2.  **Install dependencies:**
-    ```bash
-    flutter pub get
-    ```
+bash   git clone https://github.com/QasimQamar-241608442/SmatStudy-App.git
+   cd SmatStudy-App
 
-3.  **Configure Firebase:**
-    * Ensure your `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are placed in their respective directories.
-    * Enable Google Sign-In in your Firebase Authentication console.
+Install dependencies
 
-### Web Development Configuration
-Because this application uses Google Sign-In, running it on the web requires a static port to comply with Google's OAuth 2.0 authorized JavaScript origins.
+bash   flutter pub get
 
-1. Obtain your **Web Client ID** from the Google Cloud Console (APIs & Services > Credentials).
-2. Add `http://localhost:5000` to your Authorized JavaScript origins.
-3. Update the `clientId` in `login_screen.dart` and `registration_screen.dart`.
-4. **Run the app on port 5000:**
-   
-   *Via Terminal:*
-   ```bash
-   flutter run -d chrome --web-port=5000
+Firebase Setup
 
-Via VS Code (.vscode/launch.json):
+Create a project at Firebase Console
+Enable Authentication (Email/Password)
+Enable Firestore Database
+Enable Firebase Storage
+Download and replace google-services.json (Android) in android/app/
+Run flutterfire configure to regenerate lib/firebase_options.dart
 
-JSON
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "SmartStudy (Chrome Port 5000)",
-            "request": "launch",
-            "type": "dart",
-            "toolArgs": ["--web-port=5000"]
-        }
-    ]
-}
+
+Configure AI API
+
+Obtain an API key from your AI provider
+Add the key to your environment/config file (do not commit API keys)
+
+
+Run the app
+
+bash   flutter run
+
+🔧 Environment Configuration
+
+⚠️ Never commit API keys or Firebase credentials to version control.
+
+Create a .env file or use Flutter's --dart-define for sensitive values:
+bashflutter run --dart-define=AI_API_KEY=your_key_here
+Add the following to .gitignore:
+google-services.json
+*.env
+lib/firebase_options.dart
+
+📦 Key Dependencies
+yamldependencies:
+  flutter:
+  firebase_core:
+  firebase_auth:
+  cloud_firestore:
+  firebase_storage:
+  google_fonts:
+  # Add remaining packages from pubspec.yaml
+
+🤝 Contributing
+This project is currently an academic submission. For any suggestions or feedback, feel free to open an issue on the repository.
+
+👤 Author
+Qasim Qamar
+Student ID: 241-608442
+GitHub: @QasimQamar-241608442
 
 📄 License
-This project is licensed under the MIT License.
-"""
+This project is developed for academic purposes. All rights reserved © 2026 Qasim Qamar.
