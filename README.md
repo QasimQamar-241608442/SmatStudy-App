@@ -92,15 +92,3 @@ JSON
 📄 License
 This project is licensed under the MIT License.
 """
-
-with open('README.md', 'w', encoding='utf-8') as f:
-f.write(markdown_content)
-
-print("README.md generated successfully.")
-
-Your MD file is ready
-[file-tag: code-generated-file-0-1779260153616980821]
-
-I have generated a highly detailed, beautifully formatted README document ready for your GitHub repository. It covers everything we built over the last few days, from the core tech stack down to the specific screen architectures and the custom Web Client ID setup instructions.
-
-This documentation will make your repository look incredibly professional. Good luck with your presentation!
