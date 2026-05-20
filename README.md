@@ -1,37 +1,74 @@
-📚 SmartStudy AI – Timetable & Learning Assistant
-A smart academic planning Android application built with Flutter and Firebase, designed to help university students organize their study schedules, manage courses, and generate AI-powered learning content.
+# 📚 SmartStudy AI – Timetable & Learning Assistant
 
-🎯 Overview
+A smart academic planning Android application built with **Flutter** and **Firebase**, designed to help university students organize their study schedules, manage courses, and generate AI-powered learning content.
+
+---
+
+## 🎯 Overview
+
 SmartStudy AI solves a common problem for university students: the lack of intelligent, structured tools for academic planning. Students can upload course outlines, get AI-generated study notes and schedules, track deadlines, and manage their academic workload — all in one place.
-Target Audience: University students, college students, and self-learners.
 
-✨ Features
-Core Features
+**Target Audience:** University students, college students, and self-learners.
 
-🔐 User Authentication – Email/password login with Firebase Auth and session persistence
-🗄️ Database Integration – Local storage (SQLite/Hive) + Firestore with full CRUD and offline sync
-🌐 RESTful API Integration – External AI API for study notes and schedule generation
-🖥️ UI & Navigation – 7+ screens with Material Design 3 and Google Fonts (Inter)
-📷 Media Handling – Camera/gallery access, file uploads, Firebase Storage
-🔍 Search & Filter – Real-time global search with multiple filters and sort options
-⚠️ Error Handling & Validation – Form validation, network error handling, and Firebase error management
-⚙️ Settings & User Preferences – Profile management, account settings, and persistent preferences
+---
 
-Advanced Features
+## ✨ Features
 
-🤖 AI-Powered Notes – Generate structured study notes from course outlines via AI API
-📅 Smart Planner – Automated timetable and daily schedule generation
-🔔 Push Notifications – Deadline and study reminders
-📊 Grades & Analytics – Track academic performance and study progress
+### Core Features
+- 🔐 **User Authentication** – Email/password login with Firebase Auth and session persistence
+- 🗄️ **Database Integration** – Local storage (SQLite/Hive) + Firestore with full CRUD and offline sync
+- 🌐 **RESTful API Integration** – External AI API for study notes and schedule generation
+- 🖥️ **UI & Navigation** – 7+ screens with Material Design 3 and Google Fonts (Inter)
+- 📷 **Media Handling** – Camera/gallery access, file uploads, Firebase Storage
+- 🔍 **Search & Filter** – Real-time global search with multiple filters and sort options
+- ⚠️ **Error Handling & Validation** – Form validation, network error handling, and Firebase error management
+- ⚙️ **Settings & User Preferences** – Profile management, account settings, and persistent preferences
 
+### Advanced Features
+- 🤖 **AI-Powered Notes** – Generate structured study notes from course outlines via AI API
+- 📅 **Smart Planner** – Automated timetable and daily schedule generation
+- 🔔 **Push Notifications** – Deadline and study reminders
+- 📊 **Grades & Analytics** – Track academic performance and study progress
 
-🖼️ App Screens
-#ScreenDescription1Splash ScreenApp launch and initialization2Login / RegistrationAuthentication with Firebase3Home DashboardToday's tasks, upcoming deadlines, study hours4Courses ManagementAdd, edit, and organize courses and semesters5Study PlannerAI-generated weekly study schedule6Daily TimetableDay-by-day task and time management7AI Notes ScreenAI-generated notes from course outlines8Global AI ScreenGeneral AI-powered study assistant9Grades ScreenTrack grades and academic performance10NotificationsManage reminders and alerts11Global SearchSearch across courses, tasks, and notes12Profile & SettingsUser profile, account settings, preferences
+---
 
-🛠️ Tech Stack
-LayerTechnologyFrameworkFlutter (Dart)AuthenticationFirebase AuthenticationCloud DatabaseFirebase FirestoreLocal StorageSQLite / HiveFile StorageFirebase StorageAI IntegrationExternal AI REST APIUI StylingMaterial Design 3, Google Fonts (Inter)State ManagementFlutter built-in (StatefulWidget)
+## 🖼️ App Screens
 
-📁 Project Structure
+| # | Screen | Description |
+|---|--------|-------------|
+| 1 | Splash Screen | App launch and initialization |
+| 2 | Login / Registration | Authentication with Firebase |
+| 3 | Home Dashboard | Today's tasks, upcoming deadlines, study hours |
+| 4 | Courses Management | Add, edit, and organize courses and semesters |
+| 5 | Study Planner | AI-generated weekly study schedule |
+| 6 | Daily Timetable | Day-by-day task and time management |
+| 7 | AI Notes Screen | AI-generated notes from course outlines |
+| 8 | Global AI Screen | General AI-powered study assistant |
+| 9 | Grades Screen | Track grades and academic performance |
+| 10 | Notifications | Manage reminders and alerts |
+| 11 | Global Search | Search across courses, tasks, and notes |
+| 12 | Profile & Settings | User profile, account settings, preferences |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Flutter (Dart) |
+| Authentication | Firebase Authentication |
+| Cloud Database | Firebase Firestore |
+| Local Storage | SQLite / Hive |
+| File Storage | Firebase Storage |
+| AI Integration | External AI REST API |
+| UI Styling | Material Design 3, Google Fonts (Inter) |
+| State Management | Flutter built-in (StatefulWidget) |
+
+---
+
+## 📁 Project Structure
+
+```
 lib/
 ├── main.dart                        # App entry point & Firebase initialization
 ├── firebase_options.dart            # Firebase platform configuration
@@ -50,59 +87,74 @@ lib/
     ├── notifications/               # Push notifications
     ├── search/                      # Global search
     └── profile/                     # Profile, settings, account management
+```
 
-🚀 Getting Started
-Prerequisites
+---
 
-Flutter SDK (3.x or higher)
-Dart SDK
-Android Studio or VS Code with Flutter extension
-A Firebase project (see setup below)
+## 🚀 Getting Started
 
-Installation
+### Prerequisites
 
-Clone the repository
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) (3.x or higher)
+- [Dart SDK](https://dart.dev/get-dart)
+- Android Studio or VS Code with Flutter extension
+- A Firebase project (see setup below)
 
-bash   git clone https://github.com/QasimQamar-241608442/SmatStudy-App.git
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/QasimQamar-241608442/SmatStudy-App.git
    cd SmatStudy-App
+   ```
 
-Install dependencies
+2. **Install dependencies**
+   ```bash
+   flutter pub get
+   ```
 
-bash   flutter pub get
+3. **Firebase Setup**
+   - Create a project at [Firebase Console](https://console.firebase.google.com/)
+   - Enable **Authentication** (Email/Password)
+   - Enable **Firestore Database**
+   - Enable **Firebase Storage**
+   - Download and replace `google-services.json` (Android) in `android/app/`
+   - Run `flutterfire configure` to regenerate `lib/firebase_options.dart`
 
-Firebase Setup
+4. **Configure AI API**
+   - Obtain an API key from your AI provider
+   - Add the key to your environment/config file (do **not** commit API keys)
 
-Create a project at Firebase Console
-Enable Authentication (Email/Password)
-Enable Firestore Database
-Enable Firebase Storage
-Download and replace google-services.json (Android) in android/app/
-Run flutterfire configure to regenerate lib/firebase_options.dart
+5. **Run the app**
+   ```bash
+   flutter run
+   ```
 
+---
 
-Configure AI API
+## 🔧 Environment Configuration
 
-Obtain an API key from your AI provider
-Add the key to your environment/config file (do not commit API keys)
+> ⚠️ **Never commit API keys or Firebase credentials to version control.**
 
+Create a `.env` file or use Flutter's `--dart-define` for sensitive values:
 
-Run the app
+```bash
+flutter run --dart-define=AI_API_KEY=your_key_here
+```
 
-bash   flutter run
-
-🔧 Environment Configuration
-
-⚠️ Never commit API keys or Firebase credentials to version control.
-
-Create a .env file or use Flutter's --dart-define for sensitive values:
-bashflutter run --dart-define=AI_API_KEY=your_key_here
-Add the following to .gitignore:
+Add the following to `.gitignore`:
+```
 google-services.json
 *.env
 lib/firebase_options.dart
+```
 
-📦 Key Dependencies
-yamldependencies:
+---
+
+## 📦 Key Dependencies
+
+```yaml
+dependencies:
   flutter:
   firebase_core:
   firebase_auth:
@@ -110,14 +162,24 @@ yamldependencies:
   firebase_storage:
   google_fonts:
   # Add remaining packages from pubspec.yaml
+```
 
-🤝 Contributing
+---
+
+## 🤝 Contributing
+
 This project is currently an academic submission. For any suggestions or feedback, feel free to open an issue on the repository.
 
-👤 Author
-Qasim Qamar
-Student ID: 241-608442
-GitHub: @QasimQamar-241608442
+---
 
-📄 License
+## 👤 Author
+
+**Qasim Qamar**  
+Student ID: 241-608442  
+GitHub: [@QasimQamar-241608442](https://github.com/QasimQamar-241608442)
+
+---
+
+## 📄 License
+
 This project is developed for academic purposes. All rights reserved © 2026 Qasim Qamar.
